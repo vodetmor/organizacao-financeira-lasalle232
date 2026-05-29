@@ -1,0 +1,435 @@
+<script>
+(function () {
+  'use strict';
+
+  const $ = (sel) => document.querySelector(sel);
+  const $$ = (sel) => document.querySelectorAll(sel);
+  const fmtBRL = (n) => 'R$ ' + (Number(n) || 0).toLocaleString('pt-BR', {
+    minimumFractionDigits: 2, maximumFractionDigits: 2
+  });
+  const hoje = () => {
+    const d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  };
+
+  const SESSION_KEY = 'caixa232_admin_token';
+  let token = sessionStorage.getItem(SESSION_KEY) || null;
+  let snapshot = null;
+
+  function showToast(msg, tipo) {
+    const t = $('#toast');
+    t.textContent = msg;
+    t.className = 'toast toast--show' + (tipo ? ' toast--' + tipo : '');
+    setTimeout(() => { t.className = 'toast'; }, 3000);
+  }
+
+  function escapeHtml(s) {
+    if (s === null || s === undefined) return '';
+    return String(s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  /* ===================================================================
+   *  AUTH
+   * ================================================================= */
+  function login() {
+    const senha = $('#login-senha').value;
+    const btn = $('#btn-login');
+    const erroEl = $('#login-erro');
+    btn.disabled = true; btn.textContent = 'entrando…';
+    erroEl.style.display = 'none';
+
+    google.script.run
+      .withSuccessHandler((resp) => {
+        btn.disabled = false; btn.textContent = 'Entrar';
+        if (resp && resp.ok) {
+          token = resp.token;
+          sessionStorage.setItem(SESSION_KEY, token);
+          $('#login-modal').classList.remove('modal-bg--show');
+          $('#admin-area').style.display = '';
+          carregarSnapshot();
+        } else {
+          erroEl.textContent = (resp && resp.erro) || 'Falha ao entrar';
+          erroEl.style.display = '';
+          $('#login-senha').classList.add('input--erro');
+        }
+      })
+      .withFailureHandler((err) => {
+        btn.disabled = false; btn.textContent = 'Entrar';
+        erroEl.textContent = 'Erro de rede: ' + err.message;
+        erroEl.style.display = '';
+      })
+      .adminLogin(senha);
+  }
+
+  function logout() {
+    google.script.run.adminLogout(token);
+    sessionStorage.removeItem(SESSION_KEY);
+    token = null;
+    window.location.href = '?';
+  }
+
+  function carregarSnapshot() {
+    google.script.run
+      .withSuccessHandler((resp) => {
+        if (resp && resp.ok) {
+          snapshot = resp.data;
+          renderTudo();
+        } else if (resp && resp.erro && resp.erro.indexOf('Sess') === 0) {
+          sessionStorage.removeItem(SESSION_KEY);
+          token = null;
+          showToast('Sessão expirada. Faça login.', 'erro');
+          $('#login-modal').classList.add('modal-bg--show');
+          $('#admin-area').style.display = 'none';
+        } else {
+          showToast((resp && resp.erro) || 'Falha ao carregar', 'erro');
+        }
+      })
+      .withFailureHandler((err) => showToast('Erro: ' + err.message, 'erro'))
+      .adminGetSnapshot(token);
+  }
+
+  /* ===================================================================
+   *  RENDER
+   * ================================================================= */
+  function renderTudo() {
+    if (!snapshot) return;
+    renderConfig();
+    renderCategoriasSelect();
+    renderLancamentos();
+    renderAvisos();
+    renderCategoriasList();
+  }
+
+  function renderConfig() {
+    const cfg = snapshot.config || {};
+    $('#cfg-meta').value = cfg.meta || '';
+    $('#cfg-nome').value = cfg.nome_turma || '';
+    $('#cfg-data').value = cfg.data_formatura || '';
+  }
+
+  function renderCategoriasSelect() {
+    const cats = snapshot.categorias || { entrada: [], saida: [] };
+    const tipo = $('#l-tipo').value;
+    const lista = tipo === 'Entrada' ? cats.entrada : cats.saida;
+    const sel = $('#l-categoria');
+    sel.innerHTML = lista.length === 0
+      ? '<option value="">— nenhuma —</option>'
+      : lista.map(c => '<option value="' + escapeHtml(c) + '">' + escapeHtml(c) + '</option>').join('');
+  }
+
+  function renderLancamentos() {
+    const lancs = (snapshot.lancamentos || []).slice().sort((a, b) => (b.data || '').localeCompare(a.data || ''));
+    $('#lanc-count').textContent = lancs.length + ' total';
+    const box = $('#lanc-list');
+    if (lancs.length === 0) {
+      box.innerHTML = '<p class="panel__sub" style="text-align: center; padding: 20px 0;">Nenhum lançamento ainda.</p>';
+      return;
+    }
+    box.innerHTML = lancs.map(l => {
+      const tagCls = l.tipo === 'Entrada' ? 'tag--entrada' : 'tag--saida';
+      const sinal = l.tipo === 'Entrada' ? '+' : '−';
+      return (
+        '<div class="item-row" data-linha="' + l.linha + '">' +
+          '<div class="item-row__info">' +
+            '<div class="item-row__title">' + escapeHtml(l.descricao || '—') + '</div>' +
+            '<div class="item-row__meta">' +
+              '<span>' + escapeHtml(l.data) + '</span>' +
+              '<span class="tag ' + tagCls + '">' + escapeHtml(l.tipo) + '</span>' +
+              '<span>' + escapeHtml(l.categoria) + '</span>' +
+              '<span class="item-row__valor" style="color:' + (l.tipo === 'Entrada' ? 'var(--verde-700)' : 'var(--vermelho-500)') + ';">' + sinal + ' ' + fmtBRL(l.valor) + '</span>' +
+            '</div>' +
+          '</div>' +
+          '<div class="item-row__actions">' +
+            '<button class="btn btn--ghost btn--sm" data-act="edit-lanc" data-linha="' + l.linha + '">editar</button>' +
+            '<button class="btn btn--danger btn--sm" data-act="del-lanc" data-linha="' + l.linha + '">apagar</button>' +
+          '</div>' +
+        '</div>'
+      );
+    }).join('');
+  }
+
+  function renderAvisos() {
+    const avs = snapshot.avisos || [];
+    $('#aviso-count').textContent = avs.length + ' total';
+    const box = $('#aviso-list');
+    if (avs.length === 0) {
+      box.innerHTML = '<p class="panel__sub" style="text-align: center; padding: 20px 0;">Nenhum aviso ainda.</p>';
+      return;
+    }
+    box.innerHTML = avs.map(a => (
+      '<div class="item-row" data-linha="' + a.linha + '">' +
+        '<div class="item-row__info">' +
+          '<div class="item-row__title">' + escapeHtml(a.titulo) + (a.fixado ? ' <span class="tag tag--fixado">📌</span>' : '') + '</div>' +
+          '<div class="item-row__meta">' +
+            '<span>' + escapeHtml(a.data) + '</span>' +
+            '<span>' + escapeHtml((a.mensagem || '').substring(0, 80)) + (a.mensagem.length > 80 ? '…' : '') + '</span>' +
+          '</div>' +
+        '</div>' +
+        '<div class="item-row__actions">' +
+          '<button class="btn btn--ghost btn--sm" data-act="edit-aviso" data-linha="' + a.linha + '">editar</button>' +
+          '<button class="btn btn--danger btn--sm" data-act="del-aviso" data-linha="' + a.linha + '">apagar</button>' +
+        '</div>' +
+      '</div>'
+    )).join('');
+  }
+
+  function renderCategoriasList() {
+    const cats = snapshot.categorias || { entrada: [], saida: [] };
+    const box = $('#cat-list');
+    const entradas = cats.entrada.map(c => ({ tipo: 'Entrada', cat: c }));
+    const saidas   = cats.saida.map(c =>   ({ tipo: 'Saida',   cat: c }));
+    const all = entradas.concat(saidas);
+    if (all.length === 0) {
+      box.innerHTML = '<p class="panel__sub" style="text-align: center; padding: 20px 0;">Nenhuma categoria.</p>';
+      return;
+    }
+    box.innerHTML = all.map(c => (
+      '<div class="item-row">' +
+        '<div class="item-row__info">' +
+          '<div class="item-row__title">' + escapeHtml(c.cat) + '</div>' +
+          '<div class="item-row__meta">' +
+            '<span class="tag ' + (c.tipo === 'Entrada' ? 'tag--entrada' : 'tag--saida') + '">' + escapeHtml(c.tipo) + '</span>' +
+          '</div>' +
+        '</div>' +
+        '<div class="item-row__actions">' +
+          '<button class="btn btn--danger btn--sm" data-act="del-cat" data-tipo="' + escapeHtml(c.tipo) + '" data-nome="' + escapeHtml(c.cat) + '">apagar</button>' +
+        '</div>' +
+      '</div>'
+    )).join('');
+  }
+
+  /* ===================================================================
+   *  HANDLERS
+   * ================================================================= */
+  function bindHandlers() {
+    // Login
+    $('#btn-login').addEventListener('click', login);
+    $('#login-senha').addEventListener('keydown', (e) => { if (e.key === 'Enter') login(); });
+
+    $('#btn-logout').addEventListener('click', logout);
+
+    // Config salvar
+    $('#btn-cfg-salvar').addEventListener('click', () => {
+      const meta = $('#cfg-meta').value;
+      const nome = $('#cfg-nome').value;
+      const data = $('#cfg-data').value;
+      const updates = [
+        ['meta', parseFloat(meta) || 0],
+        ['nome_turma', nome],
+        ['data_formatura', data]
+      ];
+      const btn = $('#btn-cfg-salvar');
+      btn.disabled = true; btn.textContent = 'salvando…';
+      let done = 0; let temErro = false;
+      updates.forEach(([k, v]) => {
+        google.script.run
+          .withSuccessHandler((resp) => {
+            if (!resp || !resp.ok) { temErro = true; showToast(resp.erro || 'Erro em ' + k, 'erro'); }
+            done++;
+            if (done === updates.length) {
+              btn.disabled = false; btn.textContent = 'Salvar configuração';
+              if (!temErro) showToast('Configuração salva', 'sucesso');
+              carregarSnapshot();
+            }
+          })
+          .adminAtualizarConfig(token, k, v);
+      });
+    });
+
+    // Adicionar lançamento
+    $('#l-tipo').addEventListener('change', renderCategoriasSelect);
+    $('#btn-lanc-add').addEventListener('click', () => {
+      const lanc = {
+        data: $('#l-data').value || hoje(),
+        tipo: $('#l-tipo').value,
+        categoria: $('#l-categoria').value,
+        descricao: $('#l-desc').value,
+        valor: parseFloat($('#l-valor').value)
+      };
+      if (!lanc.categoria) return showToast('Escolha uma categoria', 'erro');
+      if (!lanc.valor || lanc.valor <= 0) return showToast('Valor inválido', 'erro');
+      const btn = $('#btn-lanc-add');
+      btn.disabled = true; btn.textContent = 'adicionando…';
+      google.script.run
+        .withSuccessHandler((resp) => {
+          btn.disabled = false; btn.textContent = '+ Adicionar lançamento';
+          if (resp && resp.ok) {
+            showToast('Lançamento adicionado', 'sucesso');
+            $('#l-desc').value = ''; $('#l-valor').value = '';
+            carregarSnapshot();
+          } else {
+            showToast((resp && resp.erro) || 'Erro', 'erro');
+          }
+        })
+        .adminAdicionarLancamento(token, lanc);
+    });
+
+    // Adicionar aviso
+    $('#btn-aviso-add').addEventListener('click', () => {
+      const av = {
+        data: $('#a-data').value || hoje(),
+        titulo: $('#a-titulo').value.trim(),
+        mensagem: $('#a-msg').value.trim(),
+        fixado: $('#a-fixado').checked
+      };
+      if (!av.titulo) return showToast('Título obrigatório', 'erro');
+      const btn = $('#btn-aviso-add');
+      btn.disabled = true; btn.textContent = 'publicando…';
+      google.script.run
+        .withSuccessHandler((resp) => {
+          btn.disabled = false; btn.textContent = '+ Publicar aviso';
+          if (resp && resp.ok) {
+            showToast('Aviso publicado', 'sucesso');
+            $('#a-titulo').value = ''; $('#a-msg').value = ''; $('#a-fixado').checked = false;
+            carregarSnapshot();
+          } else {
+            showToast((resp && resp.erro) || 'Erro', 'erro');
+          }
+        })
+        .adminAdicionarAviso(token, av);
+    });
+
+    // Adicionar categoria
+    $('#btn-cat-add').addEventListener('click', () => {
+      const tipo = $('#c-tipo').value;
+      const cat = $('#c-nome').value.trim();
+      if (!cat) return showToast('Nome da categoria obrigatório', 'erro');
+      const btn = $('#btn-cat-add');
+      btn.disabled = true;
+      google.script.run
+        .withSuccessHandler((resp) => {
+          btn.disabled = false;
+          if (resp && resp.ok) {
+            $('#c-nome').value = '';
+            showToast('Categoria adicionada', 'sucesso');
+            carregarSnapshot();
+          } else {
+            showToast((resp && resp.erro) || 'Erro', 'erro');
+          }
+        })
+        .adminAdicionarCategoria(token, tipo, cat);
+    });
+
+    // Deletar / editar via delegation
+    document.addEventListener('click', (e) => {
+      const btn = e.target.closest('button[data-act]');
+      if (!btn) return;
+      const act = btn.dataset.act;
+      const linha = parseInt(btn.dataset.linha, 10);
+
+      if (act === 'del-lanc') {
+        if (!confirm('Apagar este lançamento? Não dá pra desfazer pelo app.')) return;
+        google.script.run
+          .withSuccessHandler((r) => {
+            if (r && r.ok) { showToast('Lançamento apagado', 'sucesso'); carregarSnapshot(); }
+            else showToast((r && r.erro) || 'Erro', 'erro');
+          })
+          .adminDeletarLancamento(token, linha);
+      } else if (act === 'edit-lanc') {
+        editarLancamento(linha);
+      } else if (act === 'del-aviso') {
+        if (!confirm('Apagar este aviso?')) return;
+        google.script.run
+          .withSuccessHandler((r) => {
+            if (r && r.ok) { showToast('Aviso apagado', 'sucesso'); carregarSnapshot(); }
+            else showToast((r && r.erro) || 'Erro', 'erro');
+          })
+          .adminDeletarAviso(token, linha);
+      } else if (act === 'edit-aviso') {
+        editarAviso(linha);
+      } else if (act === 'del-cat') {
+        const tipo = btn.dataset.tipo;
+        const nome = btn.dataset.nome;
+        if (!confirm('Apagar a categoria "' + nome + '"? Lançamentos antigos continuam com ela.')) return;
+        google.script.run
+          .withSuccessHandler((r) => {
+            if (r && r.ok) { showToast('Categoria apagada', 'sucesso'); carregarSnapshot(); }
+            else showToast((r && r.erro) || 'Erro', 'erro');
+          })
+          .adminDeletarCategoriaPorNome(token, tipo, nome);
+      }
+    });
+
+    // Trocar senha
+    $('#btn-trocar-senha').addEventListener('click', () => {
+      const atual = $('#s-atual').value;
+      const nova = $('#s-nova').value;
+      if (!nova || nova.length < 6) return showToast('Senha nova precisa ter 6+ caracteres', 'erro');
+      const btn = $('#btn-trocar-senha');
+      btn.disabled = true; btn.textContent = 'trocando…';
+      google.script.run
+        .withSuccessHandler((r) => {
+          btn.disabled = false; btn.textContent = 'Trocar';
+          if (r && r.ok) {
+            $('#s-atual').value = ''; $('#s-nova').value = '';
+            showToast('Senha trocada', 'sucesso');
+          } else {
+            showToast((r && r.erro) || 'Erro', 'erro');
+          }
+        })
+        .adminTrocarSenha(token, atual, nova);
+    });
+  }
+
+  function editarLancamento(linha) {
+    const l = snapshot.lancamentos.find(x => x.linha === linha);
+    if (!l) return;
+    const novaDesc = prompt('Descrição:', l.descricao || '');
+    if (novaDesc === null) return;
+    const novoValor = prompt('Valor (R$):', l.valor);
+    if (novoValor === null) return;
+    const valNum = parseFloat(String(novoValor).replace(',', '.'));
+    if (isNaN(valNum) || valNum <= 0) return showToast('Valor inválido', 'erro');
+    google.script.run
+      .withSuccessHandler((r) => {
+        if (r && r.ok) { showToast('Editado', 'sucesso'); carregarSnapshot(); }
+        else showToast((r && r.erro) || 'Erro', 'erro');
+      })
+      .adminEditarLancamento(token, linha, {
+        data: l.data,
+        tipo: l.tipo,
+        categoria: l.categoria,
+        descricao: novaDesc,
+        valor: valNum
+      });
+  }
+
+  function editarAviso(linha) {
+    const a = snapshot.avisos.find(x => x.linha === linha);
+    if (!a) return;
+    const novoTit = prompt('Título:', a.titulo);
+    if (novoTit === null) return;
+    const novaMsg = prompt('Mensagem:', a.mensagem);
+    if (novaMsg === null) return;
+    google.script.run
+      .withSuccessHandler((r) => {
+        if (r && r.ok) { showToast('Aviso editado', 'sucesso'); carregarSnapshot(); }
+        else showToast((r && r.erro) || 'Erro', 'erro');
+      })
+      .adminEditarAviso(token, linha, {
+        data: a.data,
+        titulo: novoTit,
+        mensagem: novaMsg,
+        fixado: a.fixado
+      });
+  }
+
+  /* ===================================================================
+   *  Boot
+   * ================================================================= */
+  document.addEventListener('DOMContentLoaded', () => {
+    bindHandlers();
+    if (token) {
+      // tenta usar token salvo
+      $('#login-modal').classList.remove('modal-bg--show');
+      $('#admin-area').style.display = '';
+      carregarSnapshot();
+    }
+  });
+})();
+</script>

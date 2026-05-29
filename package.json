@@ -1,0 +1,19 @@
+{
+  "name": "organizacao-financeira-lasalle232",
+  "version": "0.1.0",
+  "description": "Caixa 232 — Site de transparência financeira da formatura La Salle, em Apps Script + clasp.",
+  "private": true,
+  "scripts": {
+    "push": "clasp push",
+    "open": "clasp open-script",
+    "logs": "clasp logs --watch",
+    "deploy": "clasp deploy --description \"manual deploy\""
+  },
+  "devDependencies": {
+    "@google/clasp": "^3.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/vodetmor/organizacao-financeira-lasalle232.git"
+  }
+}

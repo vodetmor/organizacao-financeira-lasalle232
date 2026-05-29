@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <?!= include('Styles'); ?>
+</head>
+<body>
+  <header class="header">
+    <div class="container header__inner">
+      <div>
+        <h1 class="header__title">💰 Caixa 232 · Formatura La Salle</h1>
+        <p class="header__sub">Transparência total — direto da planilha, sem mágica.</p>
+      </div>
+      <span class="header__badge" id="badge-turma">232 La Salle</span>
+    </div>
+  </header>
+
+  <main class="container">
+    <div id="warnings"></div>
+
+    <!-- META (estrela do show) -->
+    <section class="meta fade-in" aria-label="Progresso da meta">
+      <div class="meta__top">
+        <div>
+          <p class="section__title" style="margin: 0 0 4px;">Saldo atual vs meta</p>
+          <div class="meta__valor" id="meta-saldo">R$ 0,00</div>
+        </div>
+        <div class="meta__de">
+          de <strong id="meta-valor">R$ 0,00</strong>
+        </div>
+      </div>
+      <div class="progress" aria-hidden="true">
+        <div class="progress__fill" id="meta-fill" style="width: 0%"></div>
+      </div>
+      <div class="meta__footer">
+        <span><strong class="meta__pct" id="meta-pct">0%</strong> da meta</span>
+        <span id="meta-falta">faltam R$ 0,00</span>
+      </div>
+    </section>
+
+    <!-- 4 CARDS -->
+    <section aria-label="Resumo financeiro">
+      <h2 class="section__title">Resumo</h2>
+      <div class="cards">
+        <div class="card card--entrada">
+          <p class="card__label">Arrecadado</p>
+          <p class="card__valor" id="card-arrecadado">R$ 0,00</p>
+        </div>
+        <div class="card card--saida">
+          <p class="card__label">Gasto</p>
+          <p class="card__valor" id="card-gasto">R$ 0,00</p>
+        </div>
+        <div class="card card--destaque">
+          <p class="card__label">Saldo em caixa</p>
+          <p class="card__valor" id="card-saldo">R$ 0,00</p>
+        </div>
+        <div class="card card--falta">
+          <p class="card__label">Falta p/ meta</p>
+          <p class="card__valor" id="card-falta">R$ 0,00</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- GRÁFICOS -->
+    <section aria-label="Gráficos por categoria">
+      <h2 class="section__title">Por categoria</h2>
+      <div class="grid-2">
+        <div class="chart-card">
+          <h3>Entradas</h3>
+          <div class="chart-canvas-wrap" id="wrap-entradas">
+            <canvas id="chart-entradas"></canvas>
+          </div>
+        </div>
+        <div class="chart-card">
+          <h3>Saídas</h3>
+          <div class="chart-canvas-wrap" id="wrap-saidas">
+            <canvas id="chart-saidas"></canvas>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- DETALHAMENTO POR CATEGORIA (transparência total) -->
+    <section aria-label="Detalhamento por categoria">
+      <h2 class="section__title">Detalhamento (clique pra expandir)</h2>
+      <div id="cat-detalhe-entrada"></div>
+      <div id="cat-detalhe-saida" style="margin-top: 8px;"></div>
+    </section>
+
+    <!-- AVISOS -->
+    <section aria-label="Avisos dos organizadores" id="sec-avisos">
+      <h2 class="section__title">Avisos</h2>
+      <div id="avisos-list"></div>
+    </section>
+
+    <!-- EXTRATO -->
+    <section aria-label="Extrato completo">
+      <h2 class="section__title">Extrato completo</h2>
+      <div class="filtros" role="tablist">
+        <button class="pill pill--active" data-filtro="todos">Tudo</button>
+        <button class="pill" data-filtro="Entrada">Entradas</button>
+        <button class="pill" data-filtro="Saida">Saídas</button>
+      </div>
+      <div class="extrato" id="extrato"></div>
+    </section>
+
+    <footer class="rodape">
+      <button class="rodape__refresh" id="btn-refresh">
+        <span id="btn-refresh-txt">↻ Atualizar</span>
+      </button>
+      <div>
+        Última leitura: <span id="ultima-leitura">agora</span>
+      </div>
+      <div>
+        <a href="?page=admin" target="_top">Modo organizador</a>
+      </div>
+    </footer>
+  </main>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    window.__INITIAL__ = <?!= initialData ?>;
+  </script>
+  <?!= include('App'); ?>
+</body>
+</html>
