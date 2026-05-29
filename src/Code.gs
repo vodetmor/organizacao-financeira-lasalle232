@@ -1,63 +1,75 @@
 /**
- * Caixa 232 — Roteador do Web App
+ * Caixa 232 — API JSON
  *
- * doGet(e) decide qual página renderizar com base no parâmetro ?page=:
- *   default        → Index.html  (dashboard público read-only)
- *   page=admin     → Admin.html  (área de edição protegida por senha)
+ * Apps Script roda como API. O front-end mora no Netlify e chama:
+ *   GET  ?action=data            → snapshot público (dashboard)
+ *   POST { action, token, ... }  → operações de admin
  *
- * No carregamento do dashboard público, os dados já são injetados no
- * HTML via template scriptlet (`<?= initialData ?>`) para evitar
- * flash de loading e segunda chamada ao servidor.
+ * CORS: ContentService.createTextOutput() + MimeType.JSON retorna
+ * Access-Control-Allow-Origin: * automaticamente em GET. Para POST,
+ * o front envia Content-Type: text/plain (string JSON no body) pra
+ * evitar preflight CORS. doPost parseia via e.postData.contents.
  */
 
 const SPREADSHEET_ID = '1Tr6_YsT7B_S4KXqx6Pe8IGsuUWTik6iG-jgv3t4oGH4';
 
 function doGet(e) {
-  const page = (e && e.parameter && e.parameter.page) || 'dashboard';
-  const isAdmin = page === 'admin';
-  const template = HtmlService.createTemplateFromFile(isAdmin ? 'Admin' : 'Index');
-
-  if (isAdmin) {
-    template.initialData = 'null';
-  } else {
-    let json;
-    try {
-      json = JSON.stringify(carregarDadosDashboard());
-    } catch (err) {
-      json = JSON.stringify({ erro: 'Falha ao carregar dados: ' + err.message });
-    }
-    // Escapa '<' para não quebrar o <script> que recebe o JSON inline
-    template.initialData = json.replace(/</g, '\\u003c');
-  }
-
-  const title = isAdmin
-    ? 'Admin · Caixa 232'
-    : 'Caixa 232 · Formatura La Salle';
-
-  return template.evaluate()
-    .setTitle(title)
-    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
-    .addMetaTag('viewport', 'width=device-width, initial-scale=1, viewport-fit=cover');
-}
-
-/**
- * Helper invocado dentro dos templates HTML para incluir
- * arquivos (Styles, App, AdminApp). Uso:
- *   <?!= include('Styles'); ?>
- */
-function include(filename) {
-  return HtmlService.createHtmlOutputFromFile(filename).getContent();
-}
-
-/* ===========================================================
- * Endpoints chamados pelo cliente via google.script.run
- * Sempre defensivos: try/catch + retornar shape consistente.
- * =========================================================== */
-
-function getDashboardData() {
+  const action = (e && e.parameter && e.parameter.action) || 'data';
   try {
-    return { ok: true, data: carregarDadosDashboard() };
+    if (action === 'data')  return _json({ ok: true, data: carregarDadosDashboard() });
+    if (action === 'ping')  return _json({ ok: true, pong: true, ts: new Date().toISOString() });
+    return _json({ ok: false, erro: 'Ação desconhecida: ' + action });
   } catch (err) {
-    return { ok: false, erro: err.message };
+    return _json({ ok: false, erro: err.message });
   }
+}
+
+function doPost(e) {
+  let body = {};
+  try {
+    body = e && e.postData && e.postData.contents ? JSON.parse(e.postData.contents) : {};
+  } catch (err) {
+    return _json({ ok: false, erro: 'Body JSON inválido' });
+  }
+  const action = body.action || '';
+  const token  = body.token || '';
+
+  try {
+    let r;
+    switch (action) {
+      case 'login':        r = adminLogin(body.senha); break;
+      case 'logout':       r = adminLogout(token); break;
+      case 'snapshot':     r = adminGetSnapshot(token); break;
+
+      case 'addLanc':      r = adminAdicionarLancamento(token, body.lanc); break;
+      case 'editLanc':     r = adminEditarLancamento(token, body.linha, body.lanc); break;
+      case 'delLanc':      r = adminDeletarLancamento(token, body.linha); break;
+
+      case 'setConfig':    r = adminAtualizarConfig(token, body.chave, body.valor); break;
+
+      case 'addAviso':     r = adminAdicionarAviso(token, body.aviso); break;
+      case 'editAviso':    r = adminEditarAviso(token, body.linha, body.aviso); break;
+      case 'delAviso':     r = adminDeletarAviso(token, body.linha); break;
+
+      case 'addCat':       r = adminAdicionarCategoria(token, body.tipo, body.categoria); break;
+      case 'delCat':       r = adminDeletarCategoriaPorNome(token, body.tipo, body.categoria); break;
+
+      case 'addOrc':       r = adminAdicionarOrcamento(token, body.item); break;
+      case 'editOrc':      r = adminEditarOrcamento(token, body.linha, body.item); break;
+      case 'delOrc':       r = adminDeletarOrcamento(token, body.linha); break;
+
+      case 'trocarSenha':  r = adminTrocarSenha(token, body.senhaAtual, body.senhaNova); break;
+
+      default: r = { ok: false, erro: 'Ação inválida: ' + action };
+    }
+    return _json(r);
+  } catch (err) {
+    return _json({ ok: false, erro: err.message });
+  }
+}
+
+function _json(obj) {
+  return ContentService
+    .createTextOutput(JSON.stringify(obj))
+    .setMimeType(ContentService.MimeType.JSON);
 }

@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Admin · Caixa 232</title>
+  <meta name="robots" content="noindex">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+  <header class="hero hero--admin">
+    <div class="container">
+      <div class="hero__top">
+        <a class="brand" href="/admin">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          </span>
+          Modo organizador
+        </a>
+        <a href="/" class="chip">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px"><path d="m15 18-6-6 6-6"/></svg>
+          Voltar ao dashboard
+        </a>
+      </div>
+
+      <div class="hero__head">
+        <span class="eyebrow">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          Acesso protegido
+        </span>
+        <h1 class="hero__title">Tudo editável aqui.</h1>
+        <p class="hero__sub">Meta, orçamento, lançamentos antigos, avisos e categorias — sem precisar abrir a planilha no celular.</p>
+      </div>
+    </div>
+  </header>
+
+  <main class="container" style="padding-top: 24px;">
+    <div id="warnings"></div>
+
+    <div id="admin-area" style="display: none;">
+
+      <!-- CONFIG -->
+      <section class="panel">
+        <div class="panel__head">
+          <h2 class="panel__title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+            Meta &amp; configuração
+          </h2>
+        </div>
+        <div class="panel__body">
+          <p class="panel__sub">Esses valores aparecem em todo o dashboard.</p>
+          <div class="form-row form-row--2">
+            <div>
+              <label class="label">Meta (R$)</label>
+              <input type="number" step="0.01" min="0" class="input" id="cfg-meta">
+            </div>
+            <div>
+              <label class="label">Nome da turma</label>
+              <input type="text" class="input" id="cfg-nome">
+            </div>
+          </div>
+          <div class="form-row form-row--2">
+            <div>
+              <label class="label">Data da formatura</label>
+              <input type="date" class="input" id="cfg-data">
+            </div>
+            <div style="display: flex; align-items: flex-end;">
+              <button class="btn btn--primary btn--block" id="btn-cfg-salvar">Salvar configuração</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ORÇAMENTO -->
+      <section class="panel">
+        <div class="panel__head">
+          <h2 class="panel__title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h18M3 12h18M3 17h12"/></svg>
+            Orçamento — pra onde vai o dinheiro
+          </h2>
+          <span id="orc-count" class="tag">0 itens</span>
+        </div>
+        <div class="panel__body">
+          <p class="panel__sub">Liste cada item que vocês vão pagar (buffet, fotógrafo, decoração…) com o valor planejado. O dashboard mostra automaticamente quanto já foi pago de cada um.</p>
+
+          <div class="form-row form-row--orc">
+            <input type="text" class="input" id="orc-nome-form" placeholder="Nome do item (ex: Buffet)">
+            <select class="input" id="orc-cat-form"></select>
+            <input type="number" step="0.01" min="0" class="input" id="orc-valor-form" placeholder="R$ valor planejado">
+            <input type="text" class="input" id="orc-obs-form" placeholder="Observação (opcional)">
+          </div>
+          <button class="btn btn--success btn--block" id="btn-orc-add">+ Adicionar ao orçamento</button>
+
+          <div id="orc-list" style="margin-top: 20px;"></div>
+        </div>
+      </section>
+
+      <!-- LANÇAMENTOS -->
+      <section class="panel">
+        <div class="panel__head">
+          <h2 class="panel__title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>
+            Lançamentos
+          </h2>
+          <span id="lanc-count" class="tag">0 total</span>
+        </div>
+        <div class="panel__body">
+          <p class="panel__sub">Adicione, edite ou apague qualquer lançamento — inclusive os antigos.</p>
+
+          <div class="form-row form-row--4">
+            <input type="date" class="input" id="l-data">
+            <select class="input" id="l-tipo">
+              <option value="Entrada">Entrada</option>
+              <option value="Saida">Saída</option>
+            </select>
+            <select class="input" id="l-categoria"></select>
+            <input type="text" class="input" id="l-desc" placeholder="Descrição">
+            <input type="number" step="0.01" min="0.01" class="input" id="l-valor" placeholder="R$ valor">
+          </div>
+          <button class="btn btn--success btn--block" id="btn-lanc-add">+ Adicionar lançamento</button>
+
+          <div id="lanc-list" style="margin-top: 20px;"></div>
+        </div>
+      </section>
+
+      <!-- AVISOS -->
+      <section class="panel">
+        <div class="panel__head">
+          <h2 class="panel__title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>
+            Avisos
+          </h2>
+          <span id="aviso-count" class="tag">0 total</span>
+        </div>
+        <div class="panel__body">
+          <p class="panel__sub">Recados que aparecem no topo do dashboard.</p>
+
+          <div class="form-row">
+            <div class="form-row form-row--2">
+              <input type="date" class="input" id="a-data">
+              <input type="text" class="input" id="a-titulo" placeholder="Título do aviso">
+            </div>
+            <textarea class="input" id="a-msg" rows="2" placeholder="Mensagem completa"></textarea>
+            <label class="check-row">
+              <input type="checkbox" id="a-fixado">
+              Fixar no topo
+            </label>
+          </div>
+          <button class="btn btn--success btn--block" id="btn-aviso-add">+ Publicar aviso</button>
+
+          <div id="aviso-list" style="margin-top: 20px;"></div>
+        </div>
+      </section>
+
+      <!-- CATEGORIAS -->
+      <section class="panel">
+        <div class="panel__head">
+          <h2 class="panel__title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41 13.42 20.58a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><circle cx="7" cy="7" r="1"/></svg>
+            Categorias
+          </h2>
+        </div>
+        <div class="panel__body">
+          <p class="panel__sub">Alimentam a lista suspensa nos formulários e na planilha.</p>
+
+          <div class="form-row form-row--3">
+            <select class="input" id="c-tipo">
+              <option value="Entrada">Entrada</option>
+              <option value="Saida">Saída</option>
+            </select>
+            <input type="text" class="input" id="c-nome" placeholder="Nome da categoria">
+            <button class="btn btn--success" id="btn-cat-add">+ Adicionar</button>
+          </div>
+
+          <div id="cat-list" style="margin-top: 16px;"></div>
+        </div>
+      </section>
+
+      <!-- SENHA -->
+      <section class="panel">
+        <div class="panel__head">
+          <h2 class="panel__title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            Trocar senha admin
+          </h2>
+        </div>
+        <div class="panel__body">
+          <div class="form-row form-row--3">
+            <input type="password" class="input" id="s-atual" placeholder="Senha atual">
+            <input type="password" class="input" id="s-nova" placeholder="Nova senha (min 6)">
+            <button class="btn btn--primary" id="btn-trocar-senha">Trocar</button>
+          </div>
+        </div>
+      </section>
+
+      <footer class="rodape">
+        <button class="btn btn--ghost" id="btn-logout">Sair do modo organizador</button>
+      </footer>
+    </div>
+  </main>
+
+  <!-- MODAL DE LOGIN -->
+  <div class="modal-bg modal-bg--show" id="login-modal">
+    <div class="modal">
+      <span class="modal__icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      </span>
+      <h2>Modo organizador</h2>
+      <p>Digite a senha admin para editar a planilha pela UI.</p>
+      <input type="password" class="input" id="login-senha" placeholder="senha admin" autofocus>
+      <p class="erro-input" id="login-erro" style="display: none;"></p>
+      <div style="display: flex; gap: 8px; margin-top: 18px;">
+        <a href="/" class="btn btn--ghost" style="flex: 1;">Voltar</a>
+        <button class="btn btn--primary" id="btn-login" style="flex: 1;">Entrar</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="assets/api.js"></script>
+  <script src="assets/admin.js" defer></script>
+</body>
+</html>

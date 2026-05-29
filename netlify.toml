@@ -1,0 +1,20 @@
+# Caixa 232 — config Netlify
+# O site estático mora em web/. O back-end é uma API Apps Script.
+
+[build]
+  publish = "web"
+
+[[redirects]]
+  from = "/admin"
+  to   = "/admin.html"
+  status = 200
+
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/*.html"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
