@@ -14,9 +14,46 @@
     return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
   };
 
-  const SESSION_KEY = 'caixa232_admin_token';
-  let token = sessionStorage.getItem(SESSION_KEY) || null;
+  const TOKEN_KEY = 'caixa232_admin_token';
+  const SENHA_KEY = 'caixa232_admin_senha';
+  let token = sessionStorage.getItem(TOKEN_KEY) || null;
   let snapshot = null;
+
+  /* ━━━━━━━━━━━━ Modal de confirmação custom ━━━━━━━━━━━━ */
+  function confirmAcao({ titulo, mensagem, nome, meta, okTxt, onConfirm }) {
+    const modal = $('#confirm-modal');
+    $('#confirm-title').textContent = titulo || 'Confirmar?';
+    $('#confirm-msg').textContent = mensagem || '';
+    $('#confirm-target-name').textContent = nome || '—';
+    $('#confirm-target-meta').textContent = meta || '';
+    $('#confirm-target-meta').style.display = meta ? '' : 'none';
+    $('#confirm-ok-txt').textContent = okTxt || 'Apagar';
+    const btnOk = $('#confirm-ok');
+    const btnCancel = $('#confirm-cancel');
+
+    function cleanup() {
+      modal.classList.remove('modal-bg--show');
+      btnOk.disabled = false;
+      $('#confirm-ok-txt').textContent = okTxt || 'Apagar';
+      btnOk.onclick = null;
+      btnCancel.onclick = null;
+      escClose && document.removeEventListener('keydown', escClose);
+    }
+    const escClose = (e) => { if (e.key === 'Escape') cleanup(); };
+    document.addEventListener('keydown', escClose);
+
+    btnCancel.onclick = cleanup;
+    btnOk.onclick = async () => {
+      btnOk.disabled = true;
+      $('#confirm-ok-txt').textContent = 'apagando…';
+      try {
+        await onConfirm();
+      } finally {
+        cleanup();
+      }
+    };
+    modal.classList.add('modal-bg--show');
+  }
 
   function toast(msg, tipo) {
     const t = $('#toast');
@@ -41,22 +78,32 @@
   }
 
   /* ━━━━━━━━━━━━ Auth ━━━━━━━━━━━━ */
+  async function fazerLogin(senha, lembrar) {
+    const r = await API.post('login', { senha });
+    if (!r.ok) return { ok: false, erro: r.erro || 'Falha ao entrar' };
+    token = r.token;
+    sessionStorage.setItem(TOKEN_KEY, token);
+    if (lembrar) {
+      localStorage.setItem(SENHA_KEY, senha);
+    }
+    return { ok: true };
+  }
+
   async function login() {
     const senha = $('#login-senha').value;
+    const lembrar = $('#login-lembrar').checked;
     const btn = $('#btn-login');
     const erroEl = $('#login-erro');
     btn.disabled = true; btn.textContent = 'entrando…';
     erroEl.style.display = 'none';
     try {
-      const r = await API.post('login', { senha });
+      const r = await fazerLogin(senha, lembrar);
       if (r.ok) {
-        token = r.token;
-        sessionStorage.setItem(SESSION_KEY, token);
         $('#login-modal').classList.remove('modal-bg--show');
         $('#admin-area').style.display = '';
         await carregarSnapshot();
       } else {
-        erroEl.textContent = r.erro || 'Falha ao entrar';
+        erroEl.textContent = r.erro;
         erroEl.style.display = '';
         $('#login-senha').classList.add('input--erro');
       }
@@ -70,9 +117,20 @@
 
   function logout() {
     if (token) API.post('logout', { token }).catch(() => {});
-    sessionStorage.removeItem(SESSION_KEY);
+    sessionStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(SENHA_KEY);
     token = null;
     window.location.href = '/';
+  }
+
+  // Tenta re-login transparente usando a senha salva (se houver)
+  async function tentarAutoLogin() {
+    const senha = localStorage.getItem(SENHA_KEY);
+    if (!senha) return false;
+    try {
+      const r = await fazerLogin(senha, true);
+      return r.ok;
+    } catch (e) { return false; }
   }
 
   async function carregarSnapshot() {
@@ -82,8 +140,15 @@
         snapshot = r.data;
         renderTudo();
       } else if (r.erro && r.erro.indexOf('Sess') === 0) {
-        sessionStorage.removeItem(SESSION_KEY);
+        // Sessão expirou — tenta re-login transparente com senha salva
+        sessionStorage.removeItem(TOKEN_KEY);
         token = null;
+        const reloggedIn = await tentarAutoLogin();
+        if (reloggedIn) {
+          await carregarSnapshot();
+          return;
+        }
+        // sem senha salva → modal
         toast('Sessão expirada. Faça login.', 'erro');
         $('#login-modal').classList.add('modal-bg--show');
         $('#admin-area').style.display = 'none';
@@ -383,25 +448,52 @@
       const linha = parseInt(btn.dataset.linha, 10);
 
       if (act === 'del-lanc') {
-        if (!confirm('Apagar este lançamento?')) return;
-        await callAndReload('delLanc', { linha }, 'Lançamento apagado');
+        const l = snapshot.lancamentos.find(x => x.linha === linha);
+        if (!l) return;
+        const sinal = l.tipo === 'Entrada' ? '+' : '−';
+        confirmAcao({
+          titulo: 'Apagar lançamento?',
+          mensagem: 'O lançamento sai da planilha e do dashboard. Ação não pode ser desfeita pela UI.',
+          nome: l.descricao || '(sem descrição)',
+          meta: l.data + ' · ' + l.tipo + ' · ' + l.categoria + ' · ' + sinal + ' ' + fmtBRL(l.valor),
+          onConfirm: () => callAndReload('delLanc', { linha }, 'Lançamento apagado')
+        });
       } else if (act === 'edit-lanc') {
         editarLancamento(linha);
       } else if (act === 'del-aviso') {
-        if (!confirm('Apagar este aviso?')) return;
-        await callAndReload('delAviso', { linha }, 'Aviso apagado');
+        const a = snapshot.avisos.find(x => x.linha === linha);
+        if (!a) return;
+        confirmAcao({
+          titulo: 'Apagar aviso?',
+          mensagem: 'Esse recado some do topo do dashboard. Os alunos não vão ver mais.',
+          nome: a.titulo,
+          meta: a.data + (a.fixado ? ' · 📌 fixado' : ''),
+          onConfirm: () => callAndReload('delAviso', { linha }, 'Aviso apagado')
+        });
       } else if (act === 'edit-aviso') {
         editarAviso(linha);
       } else if (act === 'del-orc') {
-        if (!confirm('Apagar este item do orçamento?')) return;
-        await callAndReload('delOrc', { linha }, 'Item apagado');
+        const it = snapshot.orcamento.itens.find(x => x.linha === linha);
+        if (!it) return;
+        confirmAcao({
+          titulo: 'Apagar item do orçamento?',
+          mensagem: 'O item some da lista "Pra onde vai o dinheiro". Lançamentos antigos da categoria continuam.',
+          nome: it.item,
+          meta: it.categoria + ' · planejado ' + fmtBRL(it.planejado) + ' · pago ' + fmtBRL(it.pago) + (it.prazo ? ' · prazo ' + it.prazo : ''),
+          onConfirm: () => callAndReload('delOrc', { linha }, 'Item apagado')
+        });
       } else if (act === 'edit-orc') {
         editarOrcamento(linha);
       } else if (act === 'del-cat') {
         const tipo = btn.dataset.tipo;
         const nome = btn.dataset.nome;
-        if (!confirm('Apagar a categoria "' + nome + '"?')) return;
-        await callAndReload('delCat', { tipo, categoria: nome }, 'Categoria apagada');
+        confirmAcao({
+          titulo: 'Apagar categoria?',
+          mensagem: 'A categoria some das listas suspensas. Lançamentos antigos que usam ela continuam intactos.',
+          nome: nome,
+          meta: tipo,
+          onConfirm: () => callAndReload('delCat', { tipo, categoria: nome }, 'Categoria apagada')
+        });
       }
     });
   }
@@ -456,11 +548,26 @@
   // Boot
   async function boot() {
     bindHandlers();
+    // 1. Token na session ativa? Usa.
     if (token) {
       $('#login-modal').classList.remove('modal-bg--show');
       $('#admin-area').style.display = '';
       await carregarSnapshot();
+      return;
     }
+    // 2. Senha salva no localStorage? Auto-login.
+    if (localStorage.getItem(SENHA_KEY)) {
+      const ok = await tentarAutoLogin();
+      if (ok) {
+        $('#login-modal').classList.remove('modal-bg--show');
+        $('#admin-area').style.display = '';
+        await carregarSnapshot();
+        return;
+      }
+      // senha salva inválida (foi trocada) → limpa e mostra modal
+      localStorage.removeItem(SENHA_KEY);
+    }
+    // 3. Mostra o modal de login (já visível por padrão)
   }
 
   if (document.readyState === 'loading') {

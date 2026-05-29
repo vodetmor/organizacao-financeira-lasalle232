@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="assets/style.css?v=2">
+  <link rel="stylesheet" href="assets/style.css?v=3">
 </head>
 <body>
   <header class="hero hero--admin">
@@ -206,6 +206,12 @@
   <!-- MODAL DE LOGIN -->
   <div class="modal-bg modal-bg--show" id="login-modal">
     <div class="modal">
+      <div class="modal__brand">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        </span>
+        Caixa 232
+      </div>
       <span class="modal__icon" aria-hidden="true">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
       </span>
@@ -213,6 +219,10 @@
       <p>Digite a senha admin para editar a planilha pela UI.</p>
       <input type="password" class="input" id="login-senha" placeholder="senha admin" autofocus>
       <p class="erro-input" id="login-erro" style="display: none;"></p>
+      <label class="check-row" style="margin-top: 12px;">
+        <input type="checkbox" id="login-lembrar" checked>
+        Lembrar nesse aparelho (entrar direto da próxima vez)
+      </label>
       <div style="display: flex; gap: 8px; margin-top: 18px;">
         <a href="/" class="btn btn--ghost" style="flex: 1;">Voltar</a>
         <button class="btn btn--primary" id="btn-login" style="flex: 1;">Entrar</button>
@@ -220,9 +230,39 @@
     </div>
   </div>
 
+  <!-- MODAL DE CONFIRMAÇÃO DE EXCLUSÃO -->
+  <div class="modal-bg" id="confirm-modal">
+    <div class="modal">
+      <div class="modal__brand">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        </span>
+        Caixa 232
+      </div>
+      <span class="modal__icon modal__icon--danger" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+      </span>
+      <h2 id="confirm-title">Apagar item?</h2>
+      <p id="confirm-msg">Essa ação não pode ser desfeita pela UI. O item será removido da planilha.</p>
+      <div class="modal__target" id="confirm-target">
+        <div style="flex:1; min-width: 0;">
+          <span class="modal__target__label">Item</span>
+          <div id="confirm-target-name">—</div>
+          <div class="modal__target__meta" id="confirm-target-meta"></div>
+        </div>
+      </div>
+      <div style="display: flex; gap: 8px;">
+        <button class="btn btn--ghost" id="confirm-cancel" style="flex: 1;">Cancelar</button>
+        <button class="btn btn--danger" id="confirm-ok" style="flex: 1; background: var(--vermelho-500); color: var(--branco); border-color: var(--vermelho-500);">
+          <span id="confirm-ok-txt">Apagar</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
   <div class="toast" id="toast"></div>
 
-  <script src="assets/api.js?v=2"></script>
-  <script src="assets/admin.js?v=2" defer></script>
+  <script src="assets/api.js?v=3"></script>
+  <script src="assets/admin.js?v=3" defer></script>
 </body>
 </html>
