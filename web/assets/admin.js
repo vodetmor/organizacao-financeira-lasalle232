@@ -651,25 +651,6 @@
       if (ok) { $('#a-titulo').value = ''; $('#a-msg').value = ''; $('#a-fixado').checked = false; }
     });
 
-    // Trocar senha
-    $('#btn-trocar-senha').addEventListener('click', async () => {
-      const atual = $('#s-atual').value;
-      const nova  = $('#s-nova').value;
-      if (!nova || nova.length < 6) return toast('Nova senha precisa de 6+ caracteres', 'erro');
-      const btn = $('#btn-trocar-senha');
-      btn.disabled = true; btn.textContent = 'trocando…';
-      try {
-        const r = await API.post('trocarSenha', { token, senhaAtual: atual, senhaNova: nova });
-        if (r.ok) {
-          $('#s-atual').value = ''; $('#s-nova').value = '';
-          // se tinha senha salva no localStorage, atualiza pra nova
-          if (localStorage.getItem(SENHA_KEY)) localStorage.setItem(SENHA_KEY, nova);
-          toast('Senha trocada', 'sucesso');
-        } else toast(r.erro || 'Erro', 'erro');
-      } catch (err) { toast('Erro: ' + err.message, 'erro'); }
-      btn.disabled = false; btn.textContent = 'Trocar';
-    });
-
     // ━━━ Delegated handlers (checkbox, bulk bar, edit, delete) ━━━
     document.addEventListener('change', (e) => {
       const cb = e.target.closest('input[data-bulk-check]');
