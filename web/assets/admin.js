@@ -140,7 +140,11 @@
       box.innerHTML = '<p class="panel__sub" style="text-align:center;padding:20px 0;">Nenhum item orçado ainda.</p>';
       return;
     }
-    box.innerHTML = orc.itens.map(it => (
+    box.innerHTML = orc.itens.map(it => {
+      const prazoColor = it.status === 'atrasado' ? 'var(--vermelho-500)'
+                       : it.status === 'apertando' ? 'var(--ambar-700)'
+                       : 'var(--ink-600)';
+      return (
       '<div class="item-row" data-linha="' + it.linha + '">' +
         '<div class="item-row__info">' +
           '<div class="item-row__title">' + escapeHtml(it.item) +
@@ -151,6 +155,7 @@
             '<span>Pago: <strong style="color:var(--verde-700)">' + fmtBRL(it.pago) + '</strong></span>' +
             '<span>Falta: <strong>' + fmtBRL(it.restante) + '</strong></span>' +
             '<span>(' + Math.round(it.progresso) + '%)</span>' +
+            (it.prazo ? '<span style="color:' + prazoColor + '">📅 ' + escapeHtml(it.prazo) + '</span>' : '') +
             (it.observacao ? '<span style="color:var(--ink-400)">· ' + escapeHtml(it.observacao) + '</span>' : '') +
           '</div>' +
         '</div>' +
@@ -159,7 +164,8 @@
           '<button class="btn btn--danger btn--sm" data-act="del-orc" data-linha="' + it.linha + '">apagar</button>' +
         '</div>' +
       '</div>'
-    )).join('');
+    );
+    }).join('');
   }
 
   function renderLancamentos() {
@@ -336,6 +342,7 @@
         item:       $('#orc-nome-form').value.trim(),
         categoria:  $('#orc-cat-form').value,
         planejado:  parseFloat($('#orc-valor-form').value),
+        prazo:      $('#orc-prazo-form').value,
         observacao: $('#orc-obs-form').value.trim()
       };
       if (!item.item) return toast('Nome obrigatório', 'erro');
@@ -345,7 +352,12 @@
       btn.disabled = true;
       const ok = await callAndReload('addOrc', { item }, 'Item adicionado ao orçamento');
       btn.disabled = false;
-      if (ok) { $('#orc-nome-form').value = ''; $('#orc-valor-form').value = ''; $('#orc-obs-form').value = ''; }
+      if (ok) {
+        $('#orc-nome-form').value = '';
+        $('#orc-valor-form').value = '';
+        $('#orc-prazo-form').value = '';
+        $('#orc-obs-form').value = '';
+      }
     });
 
     // Trocar senha
@@ -431,11 +443,13 @@
     if (novoValor === null) return;
     const valNum = parseFloat(String(novoValor).replace(',', '.'));
     if (isNaN(valNum) || valNum < 0) return toast('Valor inválido', 'erro');
+    const novoPrazo = prompt('Prazo (AAAA-MM-DD, vazio = sem prazo):', it.prazo || '');
+    if (novoPrazo === null) return;
     const novaObs = prompt('Observação:', it.observacao);
     if (novaObs === null) return;
     await callAndReload('editOrc', {
       linha,
-      item: { item: novoNome, categoria: it.categoria, planejado: valNum, observacao: novaObs }
+      item: { item: novoNome, categoria: it.categoria, planejado: valNum, prazo: novoPrazo.trim(), observacao: novaObs }
     }, 'Item editado');
   }
 

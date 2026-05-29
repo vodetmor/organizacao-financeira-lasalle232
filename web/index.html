@@ -153,6 +153,35 @@
       </div>
     </section>
 
+    <!-- ━━━━━━━━━━━━ EVOLUÇÃO TEMPORAL ━━━━━━━━━━━━ -->
+    <section id="sec-evolucao" aria-label="Evolução no tempo">
+      <div class="section__head">
+        <h2 class="section__title">Evolução no tempo</h2>
+        <span class="section__hint">saldo real vs trajetória ideal até a formatura</span>
+      </div>
+      <div class="evolucao">
+        <div class="evolucao__head">
+          <h3 class="evolucao__title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m7 17 4-6 4 3 5-7"/></svg>
+            Trajetória da turma
+          </h3>
+          <div class="evolucao__legend">
+            <span class="legend-dot legend-dot--real">saldo real</span>
+            <span class="legend-dot legend-dot--ideal">trajetória ideal</span>
+          </div>
+        </div>
+        <div class="evolucao__body">
+          <div class="evolucao-wrap">
+            <canvas id="chart-evolucao"></canvas>
+          </div>
+          <div class="evolucao__resumo">
+            <span class="evolucao__delta evolucao__delta--ok" id="evo-delta">—</span>
+            <span style="color: var(--ink-500);">Linha azul tracejada = onde a turma deveria estar pra cumprir a meta no dia da formatura. Linha verde = onde está de fato.</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- ━━━━━━━━━━━━ GRÁFICOS ━━━━━━━━━━━━ -->
     <section aria-label="Categorias">
       <div class="section__head">

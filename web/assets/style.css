@@ -546,6 +546,7 @@ section + section { margin-top: 28px; }
 }
 .orc-bar__fill--pendente { background: linear-gradient(90deg, var(--azul-400), var(--azul-600)); }
 .orc-bar__fill--progresso { background: linear-gradient(90deg, var(--ambar-500), var(--ambar-700)); }
+.orc-bar__fill--atrasado { background: linear-gradient(90deg, var(--vermelho-500), var(--vermelho-700)); }
 .orc-bar__fill--quitado { background: linear-gradient(90deg, var(--verde-500), var(--verde-700)); }
 .orc-item__status {
   display: inline-flex;
@@ -558,9 +559,106 @@ section + section { margin-top: 28px; }
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
-.orc-item__status--pendente   { background: var(--azul-100); color: var(--azul-700); }
-.orc-item__status--progresso  { background: var(--ambar-100); color: var(--ambar-700); }
-.orc-item__status--quitado    { background: var(--verde-100); color: var(--verde-700); }
+.orc-item__status--pendente    { background: var(--azul-100); color: var(--azul-700); }
+.orc-item__status--no-prazo    { background: var(--azul-100); color: var(--azul-700); }
+.orc-item__status--progresso   { background: var(--ambar-100); color: var(--ambar-700); }
+.orc-item__status--apertando   { background: var(--ambar-100); color: var(--ambar-700); }
+.orc-item__status--atrasado    { background: var(--vermelho-100); color: var(--vermelho-700); }
+.orc-item__status--quitado     { background: var(--verde-100); color: var(--verde-700); }
+.orc-item__status--sem-prazo   { background: var(--ink-100); color: var(--ink-600); }
+.orc-item__status svg { width: 11px; height: 11px; }
+
+.orc-item__prazo {
+  font-size: 11px;
+  color: var(--ink-500);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-variant-numeric: tabular-nums;
+}
+.orc-item__prazo svg { width: 11px; height: 11px; }
+.orc-item__prazo--alerta { color: var(--vermelho-500); font-weight: 600; }
+.orc-item__prazo--apertando { color: var(--ambar-700); font-weight: 600; }
+
+/* ━━━━━━━━━━━━ EVOLUÇÃO TEMPORAL ━━━━━━━━━━━━ */
+.evolucao {
+  background: var(--branco);
+  border-radius: var(--radius);
+  border: 1px solid var(--ink-100);
+  box-shadow: var(--shadow-xs);
+  overflow: hidden;
+}
+.evolucao__head {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--ink-100);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  background: linear-gradient(180deg, var(--ink-50), transparent);
+}
+.evolucao__title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink-900);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.evolucao__title svg { width: 16px; height: 16px; color: var(--ink-500); }
+.evolucao__legend {
+  display: flex;
+  gap: 14px;
+  font-size: 12px;
+  color: var(--ink-600);
+  flex-wrap: wrap;
+}
+.legend-dot {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.legend-dot::before {
+  content: '';
+  width: 10px; height: 10px;
+  border-radius: 999px;
+  background: currentColor;
+}
+.legend-dot--real { color: var(--verde-700); }
+.legend-dot--ideal { color: var(--azul-500); }
+.evolucao__body { padding: 16px 20px; }
+.evolucao-wrap { position: relative; height: 240px; }
+.evolucao__resumo {
+  display: flex;
+  gap: 14px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  color: var(--ink-600);
+}
+.evolucao__delta {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.evolucao__delta--adiantado {
+  background: var(--verde-100);
+  color: var(--verde-700);
+}
+.evolucao__delta--atrasado {
+  background: var(--vermelho-100);
+  color: var(--vermelho-700);
+}
+.evolucao__delta--ok {
+  background: var(--ink-100);
+  color: var(--ink-700);
+}
 
 /* ━━━━━━━━━━━━ CHART CARDS ━━━━━━━━━━━━ */
 .grid-2 {
@@ -1012,7 +1110,7 @@ textarea.input { resize: vertical; min-height: 60px; }
   .form-row--2 { grid-template-columns: 1fr 1fr; }
   .form-row--3 { grid-template-columns: 100px 110px 1fr; }
   .form-row--4 { grid-template-columns: 110px 110px 130px 1fr 120px; }
-  .form-row--orc { grid-template-columns: 1fr 140px 130px 1fr; }
+  .form-row--orc { grid-template-columns: 1fr 140px 130px 130px 1fr; }
 }
 .label {
   font-size: 11px;

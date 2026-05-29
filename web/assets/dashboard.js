@@ -15,6 +15,30 @@
 
   let chartEntradas = null;
   let chartSaidas = null;
+  let chartEvolucao = null;
+
+  const STATUS_LABEL = {
+    'quitado':   'Quitado',
+    'no-prazo':  'No prazo',
+    'apertando': 'Apertando',
+    'atrasado':  'Atrasado',
+    'sem-prazo': 'Sem prazo'
+  };
+  const STATUS_ICON = {
+    'quitado':   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>',
+    'no-prazo':  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>',
+    'apertando': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>',
+    'atrasado':  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>',
+    'sem-prazo': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v.01"/><path d="M12 8v4"/></svg>'
+  };
+
+  function fmtPrazo(dias) {
+    if (dias === null || dias === undefined) return '';
+    if (dias < 0) return Math.abs(dias) + 'd em atraso';
+    if (dias === 0) return 'vence hoje';
+    if (dias === 1) return 'vence amanhã';
+    return 'em ' + dias + ' dias';
+  }
   let filtroAtual = 'todos';
   let dadosAtuais = null;
 
@@ -100,14 +124,31 @@
     // Itens
     const lista = $('#orc-lista');
     lista.innerHTML = orc.itens.map(it => {
-      let statusClass, statusTxt, barClass;
-      if (it.progresso >= 100) {
-        statusClass = 'quitado'; statusTxt = 'Quitado'; barClass = 'orc-bar__fill--quitado';
-      } else if (it.progresso > 0) {
-        statusClass = 'progresso'; statusTxt = 'Em andamento'; barClass = 'orc-bar__fill--progresso';
-      } else {
-        statusClass = 'pendente'; statusTxt = 'A pagar'; barClass = 'orc-bar__fill--pendente';
+      // Bar color por status temporal (atrasado=vermelho, apertando=âmbar, quitado=verde, resto azul)
+      let barClass;
+      if (it.status === 'quitado') barClass = 'orc-bar__fill--quitado';
+      else if (it.status === 'atrasado') barClass = 'orc-bar__fill--atrasado';
+      else if (it.status === 'apertando' || it.progresso > 0) barClass = 'orc-bar__fill--progresso';
+      else barClass = 'orc-bar__fill--pendente';
+
+      const statusTxt = STATUS_LABEL[it.status] || 'A pagar';
+      const statusIcon = STATUS_ICON[it.status] || '';
+
+      // Texto do prazo
+      let prazoBlock = '';
+      if (it.prazo) {
+        const prazoClass = it.status === 'atrasado' ? 'orc-item__prazo--alerta'
+                         : it.status === 'apertando' ? 'orc-item__prazo--apertando'
+                         : '';
+        prazoBlock = '<span class="orc-item__prazo ' + prazoClass + '">' +
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>' +
+          escapeHtml(it.prazo) +
+          (it.diasRestantes !== null && it.status !== 'quitado' ? ' · ' + fmtPrazo(it.diasRestantes) : '') +
+          '</span>';
+      } else if (it.status !== 'quitado') {
+        prazoBlock = '<span class="orc-item__prazo" style="color:var(--ink-400)">sem prazo</span>';
       }
+
       return (
         '<div class="orc-item">' +
           '<div class="orc-item__top">' +
@@ -125,7 +166,10 @@
           '</div>' +
           '<div class="orc-bar"><div class="orc-bar__fill ' + barClass + '" style="width: ' + Math.min(100, it.progresso) + '%"></div></div>' +
           '<div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; font-variant-numeric: tabular-nums;">' +
-            '<span class="orc-item__status orc-item__status--' + statusClass + '">' + statusTxt + '</span>' +
+            '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">' +
+              '<span class="orc-item__status orc-item__status--' + it.status + '">' + statusIcon + statusTxt + '</span>' +
+              prazoBlock +
+            '</div>' +
             '<span style="font-size:12px;color:var(--ink-500)">' +
               Math.round(it.progresso) + '% pago' +
               (it.restante > 0 ? ' · Faltam <strong style="color:var(--ink-800)">' + fmtBRL(it.restante) + '</strong>' : '') +
@@ -134,6 +178,109 @@
         '</div>'
       );
     }).join('');
+  }
+
+  // ━━━━━━━━━━━ EVOLUÇÃO TEMPORAL ━━━━━━━━━━━
+  function renderEvolucao(ev, meta) {
+    const sec = $('#sec-evolucao');
+    if (!ev || !ev.pontos || ev.pontos.length === 0) {
+      sec.style.display = 'none';
+      return;
+    }
+    sec.style.display = '';
+
+    const pontos = ev.pontos;
+    const labels = pontos.map(p => p.data);
+    const real = pontos.map(p => p.saldoReal);
+    const ideal = pontos.map(p => p.saldoIdeal);
+
+    const ultimoReal = real[real.length - 1];
+    const ultimoIdeal = ideal[ideal.length - 1];
+    const delta = ultimoReal - ultimoIdeal;
+    const deltaEl = $('#evo-delta');
+    if (Math.abs(delta) < 0.01) {
+      deltaEl.textContent = '✓ Na trajetória';
+      deltaEl.className = 'evolucao__delta evolucao__delta--ok';
+    } else if (delta > 0) {
+      deltaEl.textContent = '↑ Adiantado em ' + fmtBRL(delta);
+      deltaEl.className = 'evolucao__delta evolucao__delta--adiantado';
+    } else {
+      deltaEl.textContent = '↓ Atrasado em ' + fmtBRL(Math.abs(delta));
+      deltaEl.className = 'evolucao__delta evolucao__delta--atrasado';
+    }
+
+    if (chartEvolucao) chartEvolucao.destroy();
+    const ctx = $('#chart-evolucao').getContext('2d');
+    chartEvolucao = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [
+          {
+            label: 'Saldo real',
+            data: real,
+            borderColor: '#15803D',
+            backgroundColor: 'rgba(34, 197, 94, 0.12)',
+            tension: 0.3,
+            fill: true,
+            borderWidth: 2.5,
+            pointBackgroundColor: '#15803D',
+            pointBorderColor: '#fff',
+            pointBorderWidth: 2,
+            pointRadius: 4,
+            pointHoverRadius: 6
+          },
+          {
+            label: 'Trajetória ideal',
+            data: ideal,
+            borderColor: '#2B7CC9',
+            backgroundColor: 'transparent',
+            borderDash: [6, 4],
+            tension: 0,
+            borderWidth: 2,
+            pointRadius: 0,
+            pointHoverRadius: 4
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: { duration: 800, easing: 'easeOutQuart' },
+        interaction: { mode: 'index', intersect: false },
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: {
+              font: { family: 'Inter', size: 11 },
+              color: '#64748B',
+              callback: (v) => 'R$ ' + v.toLocaleString('pt-BR')
+            },
+            grid: { color: 'rgba(15, 23, 42, 0.05)' }
+          },
+          x: {
+            ticks: {
+              font: { family: 'Inter', size: 11 },
+              color: '#64748B',
+              maxRotation: 0,
+              autoSkipPadding: 12
+            },
+            grid: { display: false }
+          }
+        },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: { label: (ctx) => ' ' + ctx.dataset.label + ': ' + fmtBRL(ctx.parsed.y) },
+            backgroundColor: '#0F172A',
+            padding: 12,
+            cornerRadius: 8,
+            titleFont: { family: 'Inter', weight: '700' },
+            bodyFont:  { family: 'Inter', weight: '500', size: 13 }
+          }
+        }
+      }
+    });
   }
 
   function renderCharts(entradas, saidas) {
@@ -252,6 +399,7 @@
     renderMeta(data.resumo);
     renderCards(data.resumo);
     renderOrcamento(data.orcamento);
+    renderEvolucao(data.evolucao, data.meta);
     renderCharts(data.porCategoriaEntrada, data.porCategoriaSaida);
     renderAvisos(data.avisos);
     renderExtrato(data.lancamentos);

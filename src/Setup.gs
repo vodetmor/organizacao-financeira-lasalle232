@@ -26,6 +26,7 @@ function setup() {
   _ensureCategorias(ss);
   _ensureLancamentos(ss);
   _ensureOrcamento(ss);
+  _migrarOrcamentoPrazo(ss);   // adiciona coluna Prazo se aba antiga sem ela
   _ensureConfig(ss);
   _ensureAvisos(ss);
   _removerAbasPadrao(ss);
@@ -89,28 +90,49 @@ function _ensureOrcamento(ss) {
   let aba = ss.getSheetByName(ABAS.ORCAMENTO);
   if (aba) return aba;
   aba = ss.insertSheet(ABAS.ORCAMENTO);
-  const h = ['Item', 'Categoria', 'ValorPlanejado', 'Observacao'];
+  const h = ['Item', 'Categoria', 'ValorPlanejado', 'Prazo', 'Observacao'];
   aba.getRange(1, 1, 1, h.length).setValues([h]);
   aba.setFrozenRows(1);
   _header(aba.getRange(1, 1, 1, h.length));
-  aba.setColumnWidth(1, 220);
-  aba.setColumnWidth(2, 140);
+  aba.setColumnWidth(1, 200);
+  aba.setColumnWidth(2, 130);
   aba.setColumnWidth(3, 140);
-  aba.setColumnWidth(4, 320);
+  aba.setColumnWidth(4, 120);
+  aba.setColumnWidth(5, 300);
   aba.getRange('C2:C').setNumberFormat('R$ #,##0.00');
+  aba.getRange('D2:D').setNumberFormat('yyyy-mm-dd');
 
-  // Itens de exemplo — Vítor edita pela /admin depois
+  // Itens de exemplo — prazos escalonados ao longo do ano até a formatura
   const exemplos = [
-    ['Buffet',         'Buffet',     2500.00, 'Jantar + bebidas pra toda a turma'],
-    ['Fotógrafo',      'Fotógrafo',   800.00, 'Cobertura completa do evento + álbum'],
-    ['Decoração',      'Decoração',   600.00, 'Cenário entrada, mesas, balões'],
-    ['Som + DJ',       'Bebidas',     400.00, '4h de pista de dança'],
-    ['Convites',       'Outro',       200.00, 'Impressão + entrega aos formandos'],
-    ['Lembrancinhas',  'Outro',       300.00, 'Pra cada formando'],
-    ['Espaço/salão',   'Outro',       800.00, 'Aluguel do local da festa']
+    ['Buffet',         'Buffet',     2500.00, '2026-09-15', 'Jantar + bebidas pra toda a turma'],
+    ['Fotógrafo',      'Fotógrafo',   800.00, '2026-08-30', 'Cobertura completa do evento + álbum'],
+    ['Decoração',      'Decoração',   600.00, '2026-11-30', 'Cenário entrada, mesas, balões'],
+    ['Som + DJ',       'Bebidas',     400.00, '2026-11-30', '4h de pista de dança'],
+    ['Convites',       'Outro',       200.00, '2026-08-01', 'Impressão + entrega aos formandos'],
+    ['Lembrancinhas',  'Outro',       300.00, '2026-11-15', 'Pra cada formando'],
+    ['Espaço/salão',   'Outro',       800.00, '2026-07-30', 'Aluguel do local da festa']
   ];
-  aba.getRange(2, 1, exemplos.length, 4).setValues(exemplos);
+  aba.getRange(2, 1, exemplos.length, 5).setValues(exemplos);
   return aba;
+}
+
+/**
+ * Migração: adiciona coluna "Prazo" na aba Orcamento antiga (4 col → 5 col).
+ * Idempotente: se já tiver Prazo, não faz nada.
+ */
+function _migrarOrcamentoPrazo(ss) {
+  const aba = ss.getSheetByName(ABAS.ORCAMENTO);
+  if (!aba || aba.getLastColumn() < 1) return;
+  const headers = aba.getRange(1, 1, 1, aba.getLastColumn()).getValues()[0]
+    .map(h => String(h).trim().toLowerCase());
+  if (headers.indexOf('prazo') !== -1) return; // já migrada
+
+  // Insere coluna D (entre ValorPlanejado e Observacao)
+  aba.insertColumnBefore(4);
+  aba.getRange(1, 4).setValue('Prazo');
+  _header(aba.getRange(1, 4));
+  aba.setColumnWidth(4, 120);
+  aba.getRange('D2:D').setNumberFormat('yyyy-mm-dd');
 }
 
 function _ensureConfig(ss) {

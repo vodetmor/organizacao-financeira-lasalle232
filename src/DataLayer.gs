@@ -12,6 +12,9 @@ function carregarDadosDashboard() {
     try { setup(); } catch (e) { /* sem permissão? segue com warnings */ }
   }
 
+  // Auto-migração idempotente: garante coluna Prazo na aba Orcamento antiga.
+  try { _migrarOrcamentoPrazo(ss); } catch (e) { /* segue */ }
+
   const warnings = [];
 
   const lancamentos = _lerLancamentos(ss, warnings);
@@ -25,6 +28,7 @@ function carregarDadosDashboard() {
   const porCategoriaEntrada = agruparPorCategoria(lancamentos, 'Entrada');
   const porCategoriaSaida   = agruparPorCategoria(lancamentos, 'Saida');
   const orcamentoStatus     = cruzarOrcamentoComLancamentos(orcamento, lancamentos);
+  const evolucao            = calcularEvolucaoTemporal(lancamentos, meta, config.data_formatura);
 
   return {
     config: config,
@@ -34,6 +38,7 @@ function carregarDadosDashboard() {
     avisos: avisos,
     categorias: categorias,
     orcamento: orcamentoStatus,
+    evolucao: evolucao,
     porCategoriaEntrada: porCategoriaEntrada,
     porCategoriaSaida:   porCategoriaSaida,
     warnings: warnings,
@@ -128,11 +133,24 @@ function _lerCategorias(ss, warnings) {
 function _lerOrcamento(ss, warnings) {
   const aba = ss.getSheetByName(ABAS.ORCAMENTO);
   if (!aba) { warnings.push('Aba Orcamento não encontrada.'); return []; }
+  const headers = aba.getRange(1, 1, 1, aba.getLastColumn()).getValues()[0]
+    .map(h => String(h).trim().toLowerCase());
+  const colItem      = headers.indexOf('item');
+  const colCategoria = headers.indexOf('categoria');
+  const colPlanejado = headers.indexOf('valorplanejado');
+  const colPrazo     = headers.indexOf('prazo');
+  const colObs       = headers.indexOf('observacao');
+
   const dados = aba.getDataRange().getValues();
   if (dados.length < 2) return [];
   const out = [];
   for (let i = 1; i < dados.length; i++) {
-    const [item, categoria, planejado, observacao] = dados[i];
+    const linha = dados[i];
+    const item       = colItem      >= 0 ? linha[colItem]      : '';
+    const categoria  = colCategoria >= 0 ? linha[colCategoria] : 'Outro';
+    const planejado  = colPlanejado >= 0 ? linha[colPlanejado] : 0;
+    const prazo      = colPrazo     >= 0 ? linha[colPrazo]     : '';
+    const observacao = colObs       >= 0 ? linha[colObs]       : '';
     if (!item && !planejado) continue;
     const v = _parseValor(planejado);
     out.push({
@@ -140,6 +158,7 @@ function _lerOrcamento(ss, warnings) {
       item: String(item || '').trim() || 'Sem nome',
       categoria: String(categoria || 'Outro').trim(),
       planejado: v === null ? 0 : v,
+      prazo: _formatarData(prazo),
       observacao: String(observacao || '').trim()
     });
   }

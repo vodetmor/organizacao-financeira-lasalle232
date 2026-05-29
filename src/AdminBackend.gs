@@ -202,7 +202,11 @@ function adminAdicionarOrcamento(token, item) {
     const err = _validarOrc(item);
     if (err) return { ok: false, erro: err };
     _aba(ABAS.ORCAMENTO).appendRow([
-      item.item, item.categoria, Number(item.planejado), item.observacao || ''
+      item.item,
+      item.categoria,
+      Number(item.planejado),
+      item.prazo || '',
+      item.observacao || ''
     ]);
     return { ok: true };
   } catch (e) { return { ok: false, erro: e.message }; }
@@ -215,8 +219,12 @@ function adminEditarOrcamento(token, linha, item) {
     if (err) return { ok: false, erro: err };
     const aba = _aba(ABAS.ORCAMENTO);
     const r = _linha(aba, linha);
-    aba.getRange(r, 1, 1, 4).setValues([[
-      item.item, item.categoria, Number(item.planejado), item.observacao || ''
+    aba.getRange(r, 1, 1, 5).setValues([[
+      item.item,
+      item.categoria,
+      Number(item.planejado),
+      item.prazo || '',
+      item.observacao || ''
     ]]);
     return { ok: true };
   } catch (e) { return { ok: false, erro: e.message }; }
