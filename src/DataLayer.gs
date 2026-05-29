@@ -14,6 +14,8 @@ function carregarDadosDashboard() {
 
   // Auto-migração idempotente: garante coluna Prazo na aba Orcamento antiga.
   try { _migrarOrcamentoPrazo(ss); } catch (e) { /* segue */ }
+  // Auto-migração idempotente: garante Tag + Comprovante em Lancamentos.
+  try { _migrarLancamentosTagComprovante(ss); } catch (e) { /* segue */ }
 
   const warnings = [];
 
@@ -49,11 +51,25 @@ function carregarDadosDashboard() {
 function _lerLancamentos(ss, warnings) {
   const aba = ss.getSheetByName(ABAS.LANCAMENTOS);
   if (!aba) { warnings.push('Aba Lancamentos não encontrada. Rode setup().'); return []; }
+  const headers = aba.getRange(1, 1, 1, aba.getLastColumn()).getValues()[0]
+    .map(h => String(h).trim().toLowerCase());
+  const cData = headers.indexOf('data');
+  const cTipo = headers.indexOf('tipo');
+  const cCat  = headers.indexOf('categoria');
+  const cDesc = headers.indexOf('descricao');
+  const cVal  = headers.indexOf('valor');
+  const cTag  = headers.indexOf('tag');
+  const cComp = headers.indexOf('comprovante');
   const dados = aba.getDataRange().getValues();
   if (dados.length < 2) return [];
   const out = [];
   for (let i = 1; i < dados.length; i++) {
-    const [data, tipo, categoria, descricao, valor] = dados[i];
+    const linha = dados[i];
+    const data = cData >= 0 ? linha[cData] : '';
+    const tipo = cTipo >= 0 ? linha[cTipo] : '';
+    const categoria = cCat >= 0 ? linha[cCat] : '';
+    const descricao = cDesc >= 0 ? linha[cDesc] : '';
+    const valor = cVal >= 0 ? linha[cVal] : null;
     if (!data && !valor) continue;
     const tipoNorm = _normTipo(tipo);
     if (!tipoNorm) { warnings.push('Linha ' + (i + 1) + ' Lancamentos: tipo inválido.'); continue; }
@@ -65,7 +81,9 @@ function _lerLancamentos(ss, warnings) {
       tipo: tipoNorm,
       categoria: String(categoria || 'Sem categoria').trim(),
       descricao: String(descricao || '').trim(),
-      valor: v
+      valor: v,
+      tag: cTag >= 0 ? String(linha[cTag] || '').trim() : '',
+      comprovante: cComp >= 0 ? String(linha[cComp] || '').trim() : ''
     });
   }
   return out;

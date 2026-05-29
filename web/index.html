@@ -16,7 +16,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="assets/style.css?v=8">
+  <link rel="stylesheet" href="assets/style.css?v=9">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" defer></script>
 </head>
 <body>
@@ -75,6 +75,17 @@
   </header>
 
   <main class="container">
+    <!-- ━━━━━━━━━━━━ ALERTA DE PRAZO ━━━━━━━━━━━━ -->
+    <section id="sec-alerta-prazo" style="display: none; margin-top: 24px;">
+      <div class="alerta-prazo" id="alerta-prazo-box">
+        <span class="alerta-prazo__icon" id="alerta-prazo-icon"></span>
+        <div class="alerta-prazo__body">
+          <h3 class="alerta-prazo__titulo" id="alerta-prazo-titulo">Atenção aos prazos</h3>
+          <p class="alerta-prazo__lista" id="alerta-prazo-lista"></p>
+        </div>
+      </div>
+    </section>
+
     <!-- ━━━━━━━━━━━━ STATS ━━━━━━━━━━━━ -->
     <section aria-label="Resumo">
       <div class="section__head">
@@ -258,7 +269,7 @@
 
   <div class="toast" id="toast"></div>
 
-  <script src="assets/api.js?v=8"></script>
-  <script src="assets/dashboard.js?v=8" defer></script>
+  <script src="assets/api.js?v=9"></script>
+  <script src="assets/dashboard.js?v=9" defer></script>
 </body>
 </html>

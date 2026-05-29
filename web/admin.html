@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="assets/style.css?v=8">
+  <link rel="stylesheet" href="assets/style.css?v=9">
 </head>
 <body>
   <header class="hero hero--admin">
@@ -165,6 +165,8 @@
                 <select class="input" data-field="categoria"></select>
                 <input type="text" class="input" data-field="descricao" placeholder="Descrição">
                 <input type="number" step="0.01" min="0.01" class="input" data-field="valor" placeholder="R$ valor">
+                <input type="text" class="input" data-field="tag" placeholder="Tag (opcional, ex: rifa-PS5)">
+                <input type="url" class="input" data-field="comprovante" placeholder="Link do comprovante (Drive, foto, etc.)">
               </div>
               <button type="button" class="bulk-form__remove" data-act="remove-lanc-row" title="Remover linha" aria-label="Remover linha">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
@@ -191,6 +193,11 @@
             </div>
             <span class="list-toolbar__count" id="count-lanc-filter"></span>
             <div class="list-toolbar__actions">
+              <input type="file" id="input-import-csv" accept=".csv,text/csv" style="display: none;">
+              <button type="button" class="btn btn--ghost" id="btn-import-csv" title="Importar CSV (mesmo formato do export)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                Importar
+              </button>
               <button type="button" class="btn btn--ghost" id="btn-export-lanc" title="Baixar CSV de todos os lançamentos">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                 CSV
@@ -224,6 +231,16 @@
         </div>
         <div class="panel__body">
           <p class="panel__sub">Recados que aparecem no topo do dashboard.</p>
+
+          <div class="templates" id="templates-avisos">
+            <span class="templates__label">Modelos rápidos:</span>
+            <button type="button" class="template-btn" data-template-titulo="Reunião amanhã" data-template-msg="Reunião dos formandos amanhã às 19h pra alinhar os próximos passos. Não falta!">Reunião</button>
+            <button type="button" class="template-btn" data-template-titulo="Vendendo rifa" data-template-msg="Tá rolando rifa nova! Procura algum organizador pra comprar. Renda inteira vai pro caixa da formatura.">Rifa</button>
+            <button type="button" class="template-btn" data-template-titulo="Festa marcada!" data-template-msg="Festa pra ajudar o caixa rolando! Compra ingresso até dia 12 com qualquer organizador.">Festa</button>
+            <button type="button" class="template-btn" data-template-titulo="Mensalidade dia X" data-template-msg="Lembrete: mensalidade da turma vence no dia X. Avisa qualquer organizador quando pagar.">Mensalidade</button>
+            <button type="button" class="template-btn" data-template-titulo="Pagamento recebido" data-template-msg="Recebemos pagamento do item X! Já tá registrado no dashboard.">Pagamento</button>
+            <button type="button" class="template-btn" data-template-titulo="Meta batida 🎉" data-template-msg="Conseguimos! Atingimos a meta da formatura. Obrigado por todo apoio!">Meta</button>
+          </div>
 
           <div class="form-row">
             <div class="form-row form-row--2">
@@ -377,7 +394,7 @@
 
   <div class="toast" id="toast"></div>
 
-  <script src="assets/api.js?v=8"></script>
-  <script src="assets/admin.js?v=8" defer></script>
+  <script src="assets/api.js?v=9"></script>
+  <script src="assets/admin.js?v=9" defer></script>
 </body>
 </html>

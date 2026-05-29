@@ -25,6 +25,7 @@ function setup() {
 
   _ensureCategorias(ss);
   _ensureLancamentos(ss);
+  _migrarLancamentosTagComprovante(ss);
   _ensureOrcamento(ss);
   _migrarOrcamentoPrazo(ss);   // adiciona coluna Prazo se aba antiga sem ela
   _ensureConfig(ss);
@@ -68,7 +69,7 @@ function _ensureLancamentos(ss) {
   let aba = ss.getSheetByName(ABAS.LANCAMENTOS);
   if (aba) return aba;
   aba = ss.insertSheet(ABAS.LANCAMENTOS);
-  const h = ['Data', 'Tipo', 'Categoria', 'Descricao', 'Valor'];
+  const h = ['Data', 'Tipo', 'Categoria', 'Descricao', 'Valor', 'Tag', 'Comprovante'];
   aba.getRange(1, 1, 1, h.length).setValues([h]);
   aba.setFrozenRows(1);
   _header(aba.getRange(1, 1, 1, h.length));
@@ -77,13 +78,37 @@ function _ensureLancamentos(ss) {
   aba.setColumnWidth(3, 140);
   aba.setColumnWidth(4, 320);
   aba.setColumnWidth(5, 120);
+  aba.setColumnWidth(6, 120);
+  aba.setColumnWidth(7, 280);
   aba.getRange('A2:A').setNumberFormat('yyyy-mm-dd');
   aba.getRange('E2:E').setNumberFormat('R$ #,##0.00');
-  // Lista suspensa simples — UX, não programação
   aba.getRange('B2:B').setDataValidation(
     SpreadsheetApp.newDataValidation().requireValueInList(['Entrada', 'Saida'], true).build()
   );
   return aba;
+}
+
+/**
+ * Migração idempotente: garante que aba Lancamentos tenha colunas Tag
+ * e Comprovante. Adiciona se ausentes.
+ */
+function _migrarLancamentosTagComprovante(ss) {
+  const aba = ss.getSheetByName(ABAS.LANCAMENTOS);
+  if (!aba || aba.getLastColumn() < 1) return;
+  const headers = aba.getRange(1, 1, 1, aba.getLastColumn()).getValues()[0]
+    .map(h => String(h).trim().toLowerCase());
+  let nextCol = aba.getLastColumn() + 1;
+  if (headers.indexOf('tag') === -1) {
+    aba.getRange(1, nextCol).setValue('Tag');
+    _header(aba.getRange(1, nextCol));
+    aba.setColumnWidth(nextCol, 120);
+    nextCol++;
+  }
+  if (headers.indexOf('comprovante') === -1) {
+    aba.getRange(1, nextCol).setValue('Comprovante');
+    _header(aba.getRange(1, nextCol));
+    aba.setColumnWidth(nextCol, 280);
+  }
 }
 
 function _ensureOrcamento(ss) {

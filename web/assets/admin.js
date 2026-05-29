@@ -219,7 +219,7 @@
     const q = (busca[tipo] || '').trim().toLowerCase();
     if (!q) return items;
     const matchTxt = (txt) => String(txt || '').toLowerCase().includes(q);
-    if (tipo === 'lanc') return items.filter(l => matchTxt(l.descricao) || matchTxt(l.categoria) || matchTxt(l.tipo) || matchTxt(l.data));
+    if (tipo === 'lanc') return items.filter(l => matchTxt(l.descricao) || matchTxt(l.categoria) || matchTxt(l.tipo) || matchTxt(l.data) || matchTxt(l.tag));
     if (tipo === 'aviso') return items.filter(a => matchTxt(a.titulo) || matchTxt(a.mensagem) || matchTxt(a.data));
     if (tipo === 'orc') return items.filter(it => matchTxt(it.item) || matchTxt(it.categoria) || matchTxt(it.observacao) || matchTxt(it.prazo));
     if (tipo === 'cat') return items.filter(c => matchTxt(c.cat) || matchTxt(c.tipo));
@@ -369,11 +369,14 @@
       updateBulkBar('lanc');
       return;
     }
+    const compSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;vertical-align:middle"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>';
     box.innerHTML = lancs.map(l => {
       const tagCls = l.tipo === 'Entrada' ? 'tag--entrada' : 'tag--saida';
       const sinal = l.tipo === 'Entrada' ? '+' : '−';
       const cor = l.tipo === 'Entrada' ? 'var(--verde-700)' : 'var(--vermelho-500)';
       const isSel = selecao.lanc.has(String(l.linha));
+      const tagChip = l.tag ? '<span class="tag" style="background:var(--azul-100);color:var(--azul-700)">#' + escapeHtml(l.tag) + '</span>' : '';
+      const compLink = l.comprovante ? '<a href="' + escapeHtml(l.comprovante) + '" target="_blank" rel="noopener" style="color:var(--ink-500);text-decoration:none" title="Ver comprovante">' + compSvg + ' comprovante</a>' : '';
       return (
         '<div class="item-row has-select' + (isSel ? ' item-row--selected' : '') + '" data-lanc-id="' + l.linha + '">' +
           '<div class="item-row__check"><input type="checkbox" data-bulk-check="lanc" data-id="' + l.linha + '"' + (isSel ? ' checked' : '') + '></div>' +
@@ -383,7 +386,9 @@
               '<span>' + escapeHtml(l.data) + '</span>' +
               '<span class="tag ' + tagCls + '">' + escapeHtml(l.tipo) + '</span>' +
               '<span>' + escapeHtml(l.categoria) + '</span>' +
+              tagChip +
               '<span style="color:' + cor + ';font-weight:700">' + sinal + ' ' + fmtBRL(l.valor) + '</span>' +
+              (compLink ? ' · ' + compLink : '') +
             '</div>' +
           '</div>' +
           '<div class="item-row__actions">' +
@@ -582,12 +587,16 @@
     const lancs = [];
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
+      const tagInput = row.querySelector('[data-field="tag"]');
+      const compInput = row.querySelector('[data-field="comprovante"]');
       const l = {
         data:      row.querySelector('[data-field="data"]').value || hoje(),
         tipo:      row.querySelector('[data-field="tipo"]').value,
         categoria: row.querySelector('[data-field="categoria"]').value,
         descricao: row.querySelector('[data-field="descricao"]').value,
-        valor:     parseFloat(row.querySelector('[data-field="valor"]').value)
+        valor:     parseFloat(row.querySelector('[data-field="valor"]').value),
+        tag:         tagInput  ? tagInput.value.trim()  : '',
+        comprovante: compInput ? compInput.value.trim() : ''
       };
       if (!l.categoria) return toast('Linha ' + (i + 1) + ': escolha uma categoria', 'erro');
       if (!l.valor || l.valor <= 0) return toast('Linha ' + (i + 1) + ': valor inválido', 'erro');
@@ -604,7 +613,8 @@
       tempIds.push(tid);
       snapshot.lancamentos.push({
         linha: tid, data: l.data, tipo: l.tipo, categoria: l.categoria,
-        descricao: l.descricao || '', valor: Number(l.valor)
+        descricao: l.descricao || '', valor: Number(l.valor),
+        tag: l.tag || '', comprovante: l.comprovante || ''
       });
     });
     recalcularResumoLocal();
@@ -739,9 +749,15 @@
     const novoValor = prompt('Valor (R$):', l.valor); if (novoValor === null) return;
     const valNum = parseFloat(String(novoValor).replace(',', '.'));
     if (isNaN(valNum) || valNum <= 0) return toast('Valor inválido', 'erro');
+    const novaTag = prompt('Tag (opcional, vazio = sem tag):', l.tag || ''); if (novaTag === null) return;
+    const novoComp = prompt('Link do comprovante (opcional):', l.comprovante || ''); if (novoComp === null) return;
     await callAndReload('editLanc', {
       linha,
-      lanc: { data: l.data, tipo: l.tipo, categoria: l.categoria, descricao: novaDesc, valor: valNum }
+      lanc: {
+        data: l.data, tipo: l.tipo, categoria: l.categoria,
+        descricao: novaDesc, valor: valNum,
+        tag: novaTag.trim(), comprovante: novoComp.trim()
+      }
     }, 'Lançamento editado');
   }
   async function editarAviso(linha) {
@@ -756,7 +772,6 @@
   }
   function duplicarLancamento(linha) {
     const l = snapshot.lancamentos.find(x => x.linha === linha); if (!l) return;
-    // Acrescenta uma linha no form com os valores
     novaLancRow();
     const rows = $$('#lanc-bulk-form .bulk-form__row');
     const row = rows[rows.length - 1];
@@ -766,6 +781,10 @@
     row.querySelector('[data-field="categoria"]').value = l.categoria;
     row.querySelector('[data-field="descricao"]').value = l.descricao || '';
     row.querySelector('[data-field="valor"]').value = l.valor;
+    const tagI = row.querySelector('[data-field="tag"]');
+    const compI = row.querySelector('[data-field="comprovante"]');
+    if (tagI)  tagI.value  = l.tag || '';
+    if (compI) compI.value = ''; // comprovante NÃO copia (novo lançamento = comprovante diferente)
     atualizarBtnSalvarTxt('lanc');
     document.getElementById('lanc-bulk-form').scrollIntoView({ behavior: 'smooth', block: 'start' });
     toast('Lançamento duplicado no form. Ajuste e salve.', 'sucesso');
@@ -786,6 +805,86 @@
     toast('Item duplicado no form. Ajuste e salve.', 'sucesso');
   }
 
+  function importarLancamentosCSV(texto) {
+    // Remove BOM e separa linhas
+    const sem_bom = texto.replace(/^﻿/, '');
+    const linhas = sem_bom.split(/\r?\n/).filter(l => l.trim() !== '');
+    if (linhas.length < 2) return toast('CSV vazio ou só cabeçalho', 'erro');
+
+    // Detecta separador (;, ou ,)
+    const sep = linhas[0].includes(';') ? ';' : ',';
+    const parseLinha = (l) => {
+      const out = [];
+      let cur = '', inQ = false;
+      for (let i = 0; i < l.length; i++) {
+        const ch = l[i];
+        if (ch === '"') {
+          if (inQ && l[i + 1] === '"') { cur += '"'; i++; }
+          else inQ = !inQ;
+        } else if (ch === sep && !inQ) { out.push(cur); cur = ''; }
+        else cur += ch;
+      }
+      out.push(cur);
+      return out;
+    };
+
+    const headers = parseLinha(linhas[0]).map(h => h.trim().toLowerCase());
+    const cData = headers.indexOf('data');
+    const cTipo = headers.indexOf('tipo');
+    const cCat  = headers.indexOf('categoria');
+    const cDesc = headers.indexOf('descricao');
+    const cVal  = headers.indexOf('valor');
+    const cTag  = headers.indexOf('tag');
+    const cComp = headers.indexOf('comprovante');
+    if (cData < 0 || cTipo < 0 || cVal < 0) {
+      return toast('CSV precisa ter as colunas: Data, Tipo, Categoria, Valor (mínimo)', 'erro');
+    }
+
+    const lancs = [];
+    for (let i = 1; i < linhas.length; i++) {
+      const cols = parseLinha(linhas[i]);
+      const data = (cols[cData] || '').trim();
+      const tipo = (cols[cTipo] || '').trim();
+      // skip linhas de totais
+      if (!data && /total|saldo/i.test(tipo + (cols[cDesc] || ''))) continue;
+      if (!data) continue;
+      const valStr = (cols[cVal] || '').trim().replace(/[^\d,.-]/g, '').replace('.', '').replace(',', '.');
+      const valor = parseFloat(valStr);
+      if (isNaN(valor) || valor <= 0) continue;
+      lancs.push({
+        data,
+        tipo: tipo.toLowerCase() === 'entrada' ? 'Entrada' : 'Saida',
+        categoria: cCat >= 0 ? (cols[cCat] || '').trim() : '',
+        descricao: cDesc >= 0 ? (cols[cDesc] || '').trim() : '',
+        valor,
+        tag: cTag >= 0 ? (cols[cTag] || '').trim() : '',
+        comprovante: cComp >= 0 ? (cols[cComp] || '').trim() : ''
+      });
+    }
+
+    if (lancs.length === 0) return toast('Nenhuma linha válida no CSV', 'erro');
+
+    confirmAcao({
+      titulo: 'Importar ' + lancs.length + ' lançamento' + (lancs.length > 1 ? 's' : '') + '?',
+      mensagem: 'Eles serão adicionados ao final da planilha. Você pode revisar antes pelo botão Cancelar.',
+      nome: lancs.slice(0, 3).map(l => l.descricao || l.categoria || l.data).join(' · ') + (lancs.length > 3 ? ' · e mais ' + (lancs.length - 3) : ''),
+      meta: 'do arquivo CSV',
+      okTxt: 'Importar ' + lancs.length,
+      onConfirm: async () => {
+        const r = await API.post('addLancs', { token, lancs });
+        if (!r.ok) { toast('Falha: ' + (r.erro || ''), 'erro'); return; }
+        const startRow = r.startRow || (snapshot.lancamentos.length + 2);
+        lancs.forEach((l, i) => {
+          snapshot.lancamentos.push(Object.assign({ linha: startRow + i }, l));
+        });
+        recalcularResumoLocal();
+        renderLancamentos();
+        toast(lancs.length + ' lançamentos importados', 'sucesso');
+        refreshSilent();
+      }
+    });
+  }
+
   function exportarLancamentosCSV() {
     if (!snapshot || !snapshot.lancamentos || snapshot.lancamentos.length === 0) {
       return toast('Nada pra exportar', 'erro');
@@ -796,11 +895,17 @@
       return /[",\n;]/.test(str) ? '"' + str.replace(/"/g, '""') + '"' : str;
     };
     const linhas = [
-      ['Data', 'Tipo', 'Categoria', 'Descricao', 'Valor'].join(';')
+      ['Data', 'Tipo', 'Categoria', 'Descricao', 'Valor', 'Tag', 'Comprovante'].join(';')
     ];
     let totalE = 0, totalS = 0;
     for (const l of lancs) {
-      linhas.push([l.data, l.tipo, l.categoria, escapeCSV(l.descricao), Number(l.valor).toFixed(2).replace('.', ',')].join(';'));
+      linhas.push([
+        l.data, l.tipo, l.categoria,
+        escapeCSV(l.descricao),
+        Number(l.valor).toFixed(2).replace('.', ','),
+        escapeCSV(l.tag || ''),
+        escapeCSV(l.comprovante || '')
+      ].join(';'));
       if (l.tipo === 'Entrada') totalE += l.valor; else totalS += l.valor;
     }
     linhas.push('');
@@ -898,6 +1003,26 @@
 
     // Exportar CSV de lançamentos
     $('#btn-export-lanc').addEventListener('click', exportarLancamentosCSV);
+
+    // Importar CSV
+    $('#btn-import-csv').addEventListener('click', () => $('#input-import-csv').click());
+    $('#input-import-csv').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => { importarLancamentosCSV(ev.target.result); e.target.value = ''; };
+      reader.readAsText(file, 'utf-8');
+    });
+
+    // Templates de avisos
+    $('#templates-avisos').addEventListener('click', (e) => {
+      const btn = e.target.closest('.template-btn');
+      if (!btn) return;
+      $('#a-titulo').value = btn.dataset.templateTitulo || '';
+      $('#a-msg').value = btn.dataset.templateMsg || '';
+      $('#a-data').value = $('#a-data').value || hoje();
+      $('#a-titulo').focus();
+    });
 
     // Busca (input em qualquer toolbar)
     document.addEventListener('input', (e) => {

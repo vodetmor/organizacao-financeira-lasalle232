@@ -74,9 +74,12 @@ function adminAdicionarLancamentos(token, lancs) {
       if (err) return { ok: false, erro: 'Linha ' + (i + 1) + ': ' + err };
     }
     const aba = _aba(ABAS.LANCAMENTOS);
-    const rows = lancs.map(l => [l.data, l.tipo, l.categoria, l.descricao || '', Number(l.valor)]);
+    const rows = lancs.map(l => [
+      l.data, l.tipo, l.categoria, l.descricao || '', Number(l.valor),
+      l.tag || '', l.comprovante || ''
+    ]);
     const startRow = aba.getLastRow() + 1;
-    aba.getRange(startRow, 1, rows.length, 5).setValues(rows);
+    aba.getRange(startRow, 1, rows.length, 7).setValues(rows);
     return { ok: true, count: rows.length, startRow: startRow };
   } catch (e) { return { ok: false, erro: e.message }; }
 }
@@ -153,7 +156,8 @@ function adminAdicionarLancamento(token, lanc) {
     const err = _validarLanc(lanc);
     if (err) return { ok: false, erro: err };
     _aba(ABAS.LANCAMENTOS).appendRow([
-      lanc.data, lanc.tipo, lanc.categoria, lanc.descricao || '', Number(lanc.valor)
+      lanc.data, lanc.tipo, lanc.categoria, lanc.descricao || '', Number(lanc.valor),
+      lanc.tag || '', lanc.comprovante || ''
     ]);
     return { ok: true };
   } catch (e) { return { ok: false, erro: e.message }; }
@@ -166,8 +170,9 @@ function adminEditarLancamento(token, linha, lanc) {
     if (err) return { ok: false, erro: err };
     const aba = _aba(ABAS.LANCAMENTOS);
     const r = _linha(aba, linha);
-    aba.getRange(r, 1, 1, 5).setValues([[
-      lanc.data, lanc.tipo, lanc.categoria, lanc.descricao || '', Number(lanc.valor)
+    aba.getRange(r, 1, 1, 7).setValues([[
+      lanc.data, lanc.tipo, lanc.categoria, lanc.descricao || '', Number(lanc.valor),
+      lanc.tag || '', lanc.comprovante || ''
     ]]);
     return { ok: true };
   } catch (e) { return { ok: false, erro: e.message }; }

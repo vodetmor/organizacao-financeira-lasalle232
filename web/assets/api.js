@@ -14,7 +14,7 @@
   'use strict';
 
   // ⚙️ URL da Web App do Apps Script. Atualize após redeploy.
-  const API_URL = 'https://script.google.com/macros/s/AKfycbyT6cKDEYoeCjIMsxAaxwcvZTS2pg9LYpNLJtbXNWhl6O26PyrGyFSr03L5PTj-ipoPhQ/exec';
+  const API_URL = 'https://script.google.com/macros/s/AKfycbwcrjwqj7qinDrN51Gu3WN-BR0Y8aIVl7tiTRCmhrsE3Z_jYjpcIcPGVsAM_kmnO9l2kg/exec';
 
   async function fetchData() {
     const resp = await fetch(API_URL + '?action=data', {

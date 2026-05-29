@@ -428,6 +428,57 @@ section + section { margin-top: 28px; }
   margin-top: 4px;
 }
 
+/* ━━━━━━━━━━━━ ALERTA DE PRAZO APERTANDO ━━━━━━━━━━━━ */
+.alerta-prazo {
+  background: linear-gradient(135deg, var(--ambar-50), var(--branco) 60%);
+  border: 1px solid var(--ambar-100);
+  border-left: 3px solid var(--ambar-500);
+  border-radius: var(--radius);
+  padding: 14px 18px;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  box-shadow: var(--shadow-xs);
+}
+.alerta-prazo--atrasado {
+  background: linear-gradient(135deg, var(--vermelho-50), var(--branco) 60%);
+  border-color: var(--vermelho-100);
+  border-left-color: var(--vermelho-500);
+}
+.alerta-prazo__icon {
+  flex-shrink: 0;
+  width: 36px; height: 36px;
+  border-radius: 10px;
+  background: var(--ambar-100);
+  color: var(--ambar-700);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.alerta-prazo__icon svg { width: 18px; height: 18px; }
+.alerta-prazo--atrasado .alerta-prazo__icon { background: var(--vermelho-100); color: var(--vermelho-700); }
+.alerta-prazo__body { flex: 1; min-width: 0; }
+.alerta-prazo__titulo {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink-900);
+  margin: 0 0 4px;
+  letter-spacing: -0.01em;
+}
+.alerta-prazo__lista {
+  font-size: 13px;
+  color: var(--ink-700);
+  margin: 0;
+  line-height: 1.6;
+}
+.alerta-prazo__lista strong { font-weight: 700; }
+.alerta-prazo__lista em {
+  font-style: normal;
+  color: var(--ambar-700);
+  font-weight: 600;
+}
+.alerta-prazo--atrasado .alerta-prazo__lista em { color: var(--vermelho-700); }
+
 /* ━━━━━━━━━━━━ ORÇAMENTO ("Pra onde vai o dinheiro") ━━━━━━━━━━━━ */
 .orcamento {
   background: var(--branco);
@@ -828,6 +879,53 @@ section + section { margin-top: 28px; }
 }
 .extrato__valor--entrada { color: var(--verde-700); }
 .extrato__valor--saida   { color: var(--vermelho-500); }
+.extrato__mes-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 20px 8px;
+  border-top: 1px solid var(--ink-100);
+  background: var(--ink-50);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink-500);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+}
+.extrato__mes-head:first-child { border-top: none; }
+.extrato__mes-head__totais {
+  display: flex;
+  gap: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  font-size: 12px;
+}
+.extrato__mes-head__entrada { color: var(--verde-700); }
+.extrato__mes-head__saida   { color: var(--vermelho-500); }
+.extrato__tag {
+  display: inline-block;
+  background: var(--azul-100);
+  color: var(--azul-700);
+  padding: 1px 7px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-left: 6px;
+}
+.extrato__comp {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 6px;
+  color: var(--ink-400);
+  transition: color var(--t-base) var(--ease);
+}
+.extrato__comp:hover { color: var(--azul-700); }
+.extrato__comp svg { width: 13px; height: 13px; }
+
 .extrato__vazio {
   text-align: center;
   padding: 48px 20px;
@@ -1431,8 +1529,57 @@ textarea.input { resize: vertical; min-height: 60px; }
   grid-template-columns: 1fr;
 }
 @media (min-width: 720px) {
-  .bulk-form__fields--lanc { grid-template-columns: 110px 110px 130px 1fr 120px; }
+  .bulk-form__fields--lanc {
+    grid-template-columns: 110px 110px 130px 1fr 120px;
+    grid-template-areas:
+      "data tipo categoria descricao valor"
+      "tag  tag  comprovante comprovante comprovante";
+  }
   .bulk-form__fields--orc  { grid-template-columns: 1fr 140px 130px 130px 1fr; }
+}
+.bulk-form__fields--lanc [data-field="data"]        { grid-area: data; }
+.bulk-form__fields--lanc [data-field="tipo"]        { grid-area: tipo; }
+.bulk-form__fields--lanc [data-field="categoria"]   { grid-area: categoria; }
+.bulk-form__fields--lanc [data-field="descricao"]   { grid-area: descricao; }
+.bulk-form__fields--lanc [data-field="valor"]       { grid-area: valor; }
+.bulk-form__fields--lanc [data-field="tag"]         { grid-area: tag; }
+.bulk-form__fields--lanc [data-field="comprovante"] { grid-area: comprovante; }
+
+/* Templates de avisos */
+.templates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  background: var(--ink-50);
+  border: 1px dashed var(--ink-200);
+  border-radius: var(--radius-sm);
+}
+.templates__label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink-500);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-right: 4px;
+  align-self: center;
+}
+.template-btn {
+  background: var(--branco);
+  border: 1px solid var(--ink-200);
+  color: var(--ink-700);
+  border-radius: 999px;
+  padding: 4px 11px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--t-base) var(--ease);
+}
+.template-btn:hover {
+  border-color: var(--azul-500);
+  color: var(--azul-700);
+  background: var(--azul-50);
 }
 .bulk-form__remove {
   background: var(--branco);

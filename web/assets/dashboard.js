@@ -374,20 +374,98 @@
       return;
     }
     const sorted = filtrados.slice().sort((a, b) => (b.data || '').localeCompare(a.data || ''));
-    box.innerHTML = sorted.map(l => {
+    const compSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>';
+    const meses = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+    let html = '';
+    let mesAtual = null;
+    let mesEntrada = 0, mesSaida = 0;
+    function fecharMes() {
+      if (mesAtual === null) return '';
+      const [y, m] = mesAtual.split('-');
+      const nomeMes = meses[parseInt(m, 10) - 1] + ' / ' + y;
+      const totaisHtml =
+        '<div class="extrato__mes-head__totais">' +
+          (mesEntrada > 0 ? '<span class="extrato__mes-head__entrada">+' + fmtBRL(mesEntrada) + '</span>' : '') +
+          (mesSaida > 0 ? '<span class="extrato__mes-head__saida">−' + fmtBRL(mesSaida) + '</span>' : '') +
+        '</div>';
+      return '<div class="extrato__mes-head"><span>' + nomeMes + '</span>' + totaisHtml + '</div>';
+    }
+    // Pré-calcular totais por mês
+    const totaisMes = {};
+    for (const l of sorted) {
+      const mes = (l.data || '').substring(0, 7);
+      if (!totaisMes[mes]) totaisMes[mes] = { e: 0, s: 0 };
+      if (l.tipo === 'Entrada') totaisMes[mes].e += l.valor;
+      else totaisMes[mes].s += l.valor;
+    }
+    for (const l of sorted) {
+      const mes = (l.data || '').substring(0, 7);
+      if (mes !== mesAtual) {
+        const [y, m] = (mes || '0000-01').split('-');
+        const nomeMes = m && meses[parseInt(m, 10) - 1] ? meses[parseInt(m, 10) - 1] + ' / ' + y : mes;
+        const t = totaisMes[mes] || { e: 0, s: 0 };
+        const totaisHtml =
+          '<div class="extrato__mes-head__totais">' +
+            (t.e > 0 ? '<span class="extrato__mes-head__entrada">+' + fmtBRL(t.e) + '</span>' : '') +
+            (t.s > 0 ? '<span class="extrato__mes-head__saida">−' + fmtBRL(t.s) + '</span>' : '') +
+          '</div>';
+        html += '<div class="extrato__mes-head"><span>' + escapeHtml(nomeMes) + '</span>' + totaisHtml + '</div>';
+        mesAtual = mes;
+      }
       const sinal = l.tipo === 'Entrada' ? '+' : '−';
       const cls = l.tipo === 'Entrada' ? 'extrato__valor--entrada' : 'extrato__valor--saida';
-      return (
+      const tagHtml = l.tag ? '<span class="extrato__tag">' + escapeHtml(l.tag) + '</span>' : '';
+      const compHtml = l.comprovante
+        ? '<a class="extrato__comp" href="' + escapeHtml(l.comprovante) + '" target="_blank" rel="noopener" title="Ver comprovante">' + compSvg + '</a>'
+        : '';
+      html +=
         '<div class="extrato__linha">' +
           '<span class="extrato__data">' + escapeHtml(l.data) + '</span>' +
           '<span class="extrato__desc">' +
-            '<span class="extrato__cat">' + escapeHtml(l.categoria) + '</span>' +
-            '<span class="extrato__txt">' + escapeHtml(l.descricao || '—') + '</span>' +
+            '<span class="extrato__cat">' + escapeHtml(l.categoria) + tagHtml + '</span>' +
+            '<span class="extrato__txt">' + escapeHtml(l.descricao || '—') + compHtml + '</span>' +
           '</span>' +
           '<span class="extrato__valor ' + cls + '">' + sinal + ' ' + fmtBRL(l.valor) + '</span>' +
-        '</div>'
-      );
-    }).join('');
+        '</div>';
+    }
+    box.innerHTML = html;
+  }
+
+  function renderAlertaPrazo(orc) {
+    const sec = $('#sec-alerta-prazo');
+    if (!orc || !orc.itens || orc.itens.length === 0) { sec.style.display = 'none'; return; }
+    const atrasados = orc.itens.filter(it => it.status === 'atrasado');
+    const apertando = orc.itens.filter(it => it.status === 'apertando' && it.diasRestantes !== null && it.diasRestantes <= 7);
+    if (atrasados.length === 0 && apertando.length === 0) { sec.style.display = 'none'; return; }
+
+    const box = $('#alerta-prazo-box');
+    const iconEl = $('#alerta-prazo-icon');
+    const tituloEl = $('#alerta-prazo-titulo');
+    const listaEl = $('#alerta-prazo-lista');
+
+    const ehAtrasado = atrasados.length > 0;
+    box.classList.toggle('alerta-prazo--atrasado', ehAtrasado);
+    iconEl.innerHTML = ehAtrasado
+      ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>'
+      : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>';
+    tituloEl.textContent = ehAtrasado
+      ? (atrasados.length === 1 ? '1 item atrasado' : atrasados.length + ' itens atrasados')
+      : (apertando.length === 1 ? '1 prazo apertando' : apertando.length + ' prazos apertando');
+
+    const fmtItem = (it) => {
+      const dias = it.diasRestantes;
+      const restante = fmtBRL(it.restante);
+      let suf = '';
+      if (it.status === 'atrasado') suf = ' (<em>' + Math.abs(dias) + 'd em atraso</em>)';
+      else if (dias === 0) suf = ' (<em>vence hoje</em>)';
+      else if (dias === 1) suf = ' (<em>vence amanhã</em>)';
+      else suf = ' (<em>em ' + dias + ' dias</em>)';
+      return '<strong>' + escapeHtml(it.item) + '</strong> — faltam ' + restante + suf;
+    };
+    const lista = atrasados.concat(apertando).slice(0, 4).map(fmtItem).join(' · ');
+    const extra = (atrasados.length + apertando.length) > 4 ? ' · e mais ' + (atrasados.length + apertando.length - 4) : '';
+    listaEl.innerHTML = lista + extra;
+    sec.style.display = '';
   }
 
   function renderAll(data) {
@@ -396,6 +474,7 @@
     if (data.config && data.config.nome_turma) {
       $('#badge-turma').textContent = data.config.nome_turma;
     }
+    renderAlertaPrazo(data.orcamento);
     renderMeta(data.resumo);
     renderCards(data.resumo);
     renderOrcamento(data.orcamento);
