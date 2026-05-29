@@ -946,6 +946,19 @@
     $('#login-senha').addEventListener('keydown', (e) => { if (e.key === 'Enter') login(); });
     $('#btn-logout').addEventListener('click', logout);
 
+    // Olho da senha
+    const SVG_EYE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>';
+    const SVG_EYE_OFF = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 19c-7 0-10-7-10-7a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A10.94 10.94 0 0 1 12 4c7 0 10 7 10 7a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
+    $('#login-senha-toggle').addEventListener('click', () => {
+      const inp = $('#login-senha');
+      const btn = $('#login-senha-toggle');
+      const oculto = inp.type === 'password';
+      inp.type = oculto ? 'text' : 'password';
+      btn.innerHTML = oculto ? SVG_EYE_OFF : SVG_EYE;
+      btn.setAttribute('aria-label', oculto ? 'Ocultar senha' : 'Mostrar senha');
+      inp.focus();
+    });
+
     // Config
     $('#btn-cfg-salvar').addEventListener('click', async () => {
       const updates = [

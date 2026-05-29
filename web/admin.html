@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="assets/style.css?v=9">
+  <link rel="stylesheet" href="assets/style.css?v=10">
 </head>
 <body>
   <header class="hero hero--admin">
@@ -349,7 +349,12 @@
       </span>
       <h2>Modo organizador</h2>
       <p>Digite a senha admin para editar a planilha pela UI.</p>
-      <input type="password" class="input" id="login-senha" placeholder="senha admin" autofocus>
+      <div class="input-password">
+        <input type="password" class="input" id="login-senha" placeholder="senha admin" autofocus>
+        <button type="button" class="input-password__toggle" id="login-senha-toggle" aria-label="Mostrar senha" title="Mostrar/ocultar senha">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
+        </button>
+      </div>
       <p class="erro-input" id="login-erro" style="display: none;"></p>
       <label class="check-row" style="margin-top: 12px;">
         <input type="checkbox" id="login-lembrar" checked>
@@ -394,7 +399,7 @@
 
   <div class="toast" id="toast"></div>
 
-  <script src="assets/api.js?v=9"></script>
-  <script src="assets/admin.js?v=9" defer></script>
+  <script src="assets/api.js?v=10"></script>
+  <script src="assets/admin.js?v=10" defer></script>
 </body>
 </html>

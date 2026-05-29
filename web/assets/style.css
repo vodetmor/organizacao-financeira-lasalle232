@@ -1200,6 +1200,35 @@ section + section { margin-top: 28px; }
 .input--erro { border-color: var(--vermelho-500); }
 textarea.input { resize: vertical; min-height: 60px; }
 
+/* Input de senha com olho */
+.input-password {
+  position: relative;
+}
+.input-password .input {
+  padding-right: 44px;
+}
+.input-password__toggle {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  padding: 6px 8px;
+  cursor: pointer;
+  color: var(--ink-400);
+  border-radius: 6px;
+  transition: color var(--t-base) var(--ease), background var(--t-base) var(--ease);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.input-password__toggle:hover {
+  color: var(--azul-700);
+  background: var(--azul-50);
+}
+.input-password__toggle svg { width: 18px; height: 18px; }
+
 .btn {
   display: inline-flex;
   align-items: center;
