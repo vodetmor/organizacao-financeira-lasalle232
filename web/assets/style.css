@@ -1249,6 +1249,173 @@ textarea.input { resize: vertical; min-height: 60px; }
   gap: 4px;
   flex-shrink: 0;
 }
+.item-row__check {
+  display: flex;
+  align-items: center;
+  padding-right: 12px;
+  flex-shrink: 0;
+}
+.item-row__check input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--azul-700);
+  cursor: pointer;
+}
+.item-row.has-select {
+  grid-template-columns: auto 1fr auto;
+}
+.item-row--selected {
+  background: var(--azul-50);
+  margin: 0 -12px;
+  padding-left: 12px;
+  padding-right: 12px;
+  border-radius: 6px;
+}
+.item-row--selected .item-row__title {
+  color: var(--azul-900);
+}
+
+/* ━━━━━━━━━━━━ Bulk bar (toolbar de seleção) ━━━━━━━━━━━━ */
+.bulk-bar {
+  position: sticky;
+  bottom: 0;
+  background: linear-gradient(180deg, transparent, var(--branco) 35%);
+  padding: 14px 0 4px;
+  margin-top: 16px;
+  display: none;
+  animation: slideUp 200ms var(--ease) both;
+  z-index: 10;
+}
+.bulk-bar--show { display: block; }
+.bulk-bar__inner {
+  background: var(--ink-900);
+  color: var(--branco);
+  border-radius: 999px;
+  padding: 10px 14px 10px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  box-shadow: 0 8px 24px -8px rgba(15, 23, 42, 0.4);
+  font-size: 13px;
+}
+.bulk-bar__count {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.bulk-bar__actions {
+  display: flex;
+  gap: 6px;
+}
+.bulk-bar .btn {
+  font-size: 12px;
+  padding: 6px 14px;
+  box-shadow: none;
+}
+.bulk-bar .btn--ghost {
+  background: transparent;
+  border-color: rgba(255, 255, 255, 0.2);
+  color: var(--branco);
+}
+.bulk-bar .btn--ghost:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.35);
+  color: var(--branco);
+}
+.bulk-bar .btn--danger {
+  background: var(--vermelho-500);
+  color: var(--branco);
+  border-color: var(--vermelho-500);
+}
+.bulk-bar .btn--danger:hover { background: var(--vermelho-700); border-color: var(--vermelho-700); }
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ━━━━━━━━━━━━ Multi-adição (form repetível) ━━━━━━━━━━━━ */
+.bulk-form {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.bulk-form__row {
+  display: grid;
+  gap: 8px;
+  align-items: center;
+}
+.bulk-form__row--lanc {
+  grid-template-columns: 1fr auto;
+}
+@media (min-width: 720px) {
+  .bulk-form__row--lanc { grid-template-columns: 1fr 36px; }
+}
+.bulk-form__fields {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: 1fr;
+}
+@media (min-width: 720px) {
+  .bulk-form__fields--lanc { grid-template-columns: 110px 110px 130px 1fr 120px; }
+  .bulk-form__fields--orc  { grid-template-columns: 1fr 140px 130px 130px 1fr; }
+}
+.bulk-form__remove {
+  background: var(--branco);
+  border: 1px solid var(--ink-200);
+  color: var(--ink-400);
+  border-radius: 8px;
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all var(--t-base) var(--ease);
+  flex-shrink: 0;
+  padding: 0;
+}
+.bulk-form__remove:hover {
+  border-color: var(--vermelho-500);
+  color: var(--vermelho-500);
+  background: var(--vermelho-50);
+}
+.bulk-form__remove svg { width: 14px; height: 14px; }
+.bulk-form__remove:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+.bulk-form__add {
+  background: transparent;
+  border: 1px dashed var(--ink-300);
+  color: var(--ink-600);
+  border-radius: var(--radius-sm);
+  padding: 9px;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  margin-top: 4px;
+  transition: all var(--t-base) var(--ease);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+}
+.bulk-form__add:hover {
+  border-color: var(--verde-500);
+  color: var(--verde-700);
+  border-style: solid;
+  background: var(--verde-50);
+}
+.bulk-form__add svg { width: 14px; height: 14px; }
+.bulk-form__row-num {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--ink-400);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  margin-bottom: 2px;
+}
 
 .tag {
   background: var(--ink-100);

@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="assets/style.css?v=3">
+  <link rel="stylesheet" href="assets/style.css?v=4">
 </head>
 <body>
   <header class="hero hero--admin">
@@ -86,16 +86,45 @@
         <div class="panel__body">
           <p class="panel__sub">Liste cada item que vocês vão pagar (buffet, fotógrafo, decoração…) com o valor planejado. O dashboard mostra automaticamente quanto já foi pago de cada um.</p>
 
-          <div class="form-row form-row--orc">
-            <input type="text" class="input" id="orc-nome-form" placeholder="Nome do item (ex: Buffet)">
-            <select class="input" id="orc-cat-form"></select>
-            <input type="number" step="0.01" min="0" class="input" id="orc-valor-form" placeholder="R$ valor planejado">
-            <input type="date" class="input" id="orc-prazo-form" title="Prazo (opcional)">
-            <input type="text" class="input" id="orc-obs-form" placeholder="Observação (opcional)">
+          <div class="bulk-form" id="orc-bulk-form">
+            <!-- linhas geradas pelo JS a partir do template -->
           </div>
-          <button class="btn btn--success btn--block" id="btn-orc-add">+ Adicionar ao orçamento</button>
+          <template id="orc-row-template">
+            <div class="bulk-form__row bulk-form__row--lanc">
+              <div class="bulk-form__fields bulk-form__fields--orc">
+                <input type="text" class="input" data-field="item" placeholder="Nome do item (ex: Buffet)">
+                <select class="input" data-field="categoria"></select>
+                <input type="number" step="0.01" min="0" class="input" data-field="planejado" placeholder="R$ valor planejado">
+                <input type="date" class="input" data-field="prazo" title="Prazo (opcional)">
+                <input type="text" class="input" data-field="observacao" placeholder="Observação (opcional)">
+              </div>
+              <button type="button" class="bulk-form__remove" data-act="remove-orc-row" title="Remover linha" aria-label="Remover linha">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+              </button>
+            </div>
+          </template>
+          <button type="button" class="bulk-form__add" id="btn-orc-mais">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+            Adicionar mais um item
+          </button>
+          <button class="btn btn--success btn--block" id="btn-orc-add" style="margin-top: 10px;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+            <span id="btn-orc-add-txt">Salvar item</span>
+          </button>
 
           <div id="orc-list" style="margin-top: 20px;"></div>
+          <div class="bulk-bar" id="bulk-bar-orc">
+            <div class="bulk-bar__inner">
+              <span class="bulk-bar__count" id="bulk-count-orc">0 itens selecionados</span>
+              <div class="bulk-bar__actions">
+                <button type="button" class="btn btn--ghost btn--sm" data-bulk-action="clear" data-bulk-type="orc">Limpar</button>
+                <button type="button" class="btn btn--danger btn--sm" data-bulk-action="delete" data-bulk-type="orc">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
+                  <span id="bulk-del-orc-txt">Apagar selecionados</span>
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -109,21 +138,50 @@
           <span id="lanc-count" class="tag">0 total</span>
         </div>
         <div class="panel__body">
-          <p class="panel__sub">Adicione, edite ou apague qualquer lançamento — inclusive os antigos.</p>
+          <p class="panel__sub">Adicione, edite ou apague qualquer lançamento — inclusive os antigos. Dá pra registrar vários de uma vez.</p>
 
-          <div class="form-row form-row--4">
-            <input type="date" class="input" id="l-data">
-            <select class="input" id="l-tipo">
-              <option value="Entrada">Entrada</option>
-              <option value="Saida">Saída</option>
-            </select>
-            <select class="input" id="l-categoria"></select>
-            <input type="text" class="input" id="l-desc" placeholder="Descrição">
-            <input type="number" step="0.01" min="0.01" class="input" id="l-valor" placeholder="R$ valor">
+          <div class="bulk-form" id="lanc-bulk-form">
+            <!-- linhas geradas pelo JS -->
           </div>
-          <button class="btn btn--success btn--block" id="btn-lanc-add">+ Adicionar lançamento</button>
+          <template id="lanc-row-template">
+            <div class="bulk-form__row bulk-form__row--lanc">
+              <div class="bulk-form__fields bulk-form__fields--lanc">
+                <input type="date" class="input" data-field="data">
+                <select class="input" data-field="tipo">
+                  <option value="Entrada">Entrada</option>
+                  <option value="Saida">Saída</option>
+                </select>
+                <select class="input" data-field="categoria"></select>
+                <input type="text" class="input" data-field="descricao" placeholder="Descrição">
+                <input type="number" step="0.01" min="0.01" class="input" data-field="valor" placeholder="R$ valor">
+              </div>
+              <button type="button" class="bulk-form__remove" data-act="remove-lanc-row" title="Remover linha" aria-label="Remover linha">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+              </button>
+            </div>
+          </template>
+          <button type="button" class="bulk-form__add" id="btn-lanc-mais">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+            Adicionar mais um lançamento
+          </button>
+          <button class="btn btn--success btn--block" id="btn-lanc-add" style="margin-top: 10px;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+            <span id="btn-lanc-add-txt">Salvar lançamento</span>
+          </button>
 
           <div id="lanc-list" style="margin-top: 20px;"></div>
+          <div class="bulk-bar" id="bulk-bar-lanc">
+            <div class="bulk-bar__inner">
+              <span class="bulk-bar__count" id="bulk-count-lanc">0 lançamentos selecionados</span>
+              <div class="bulk-bar__actions">
+                <button type="button" class="btn btn--ghost btn--sm" data-bulk-action="clear" data-bulk-type="lanc">Limpar</button>
+                <button type="button" class="btn btn--danger btn--sm" data-bulk-action="delete" data-bulk-type="lanc">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
+                  <span id="bulk-del-lanc-txt">Apagar selecionados</span>
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -153,6 +211,18 @@
           <button class="btn btn--success btn--block" id="btn-aviso-add">+ Publicar aviso</button>
 
           <div id="aviso-list" style="margin-top: 20px;"></div>
+          <div class="bulk-bar" id="bulk-bar-aviso">
+            <div class="bulk-bar__inner">
+              <span class="bulk-bar__count" id="bulk-count-aviso">0 avisos selecionados</span>
+              <div class="bulk-bar__actions">
+                <button type="button" class="btn btn--ghost btn--sm" data-bulk-action="clear" data-bulk-type="aviso">Limpar</button>
+                <button type="button" class="btn btn--danger btn--sm" data-bulk-action="delete" data-bulk-type="aviso">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
+                  <span id="bulk-del-aviso-txt">Apagar selecionados</span>
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -177,6 +247,18 @@
           </div>
 
           <div id="cat-list" style="margin-top: 16px;"></div>
+          <div class="bulk-bar" id="bulk-bar-cat">
+            <div class="bulk-bar__inner">
+              <span class="bulk-bar__count" id="bulk-count-cat">0 categorias selecionadas</span>
+              <div class="bulk-bar__actions">
+                <button type="button" class="btn btn--ghost btn--sm" data-bulk-action="clear" data-bulk-type="cat">Limpar</button>
+                <button type="button" class="btn btn--danger btn--sm" data-bulk-action="delete" data-bulk-type="cat">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
+                  <span id="bulk-del-cat-txt">Apagar selecionadas</span>
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -262,7 +344,7 @@
 
   <div class="toast" id="toast"></div>
 
-  <script src="assets/api.js?v=3"></script>
-  <script src="assets/admin.js?v=3" defer></script>
+  <script src="assets/api.js?v=4"></script>
+  <script src="assets/admin.js?v=4" defer></script>
 </body>
 </html>
