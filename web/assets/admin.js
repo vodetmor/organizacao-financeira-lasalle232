@@ -27,6 +27,7 @@
 
   // Multi-seleção: id por tipo. Cat usa "tipo|nome".
   const selecao = { lanc: new Set(), aviso: new Set(), orc: new Set(), cat: new Set() };
+  const busca = { lanc: '', aviso: '', orc: '', cat: '' };
   const LABELS = {
     lanc:  { sing: 'lançamento', plur: 'lançamentos', gen: 'm' },
     aviso: { sing: 'aviso',      plur: 'avisos',      gen: 'm' },
@@ -196,7 +197,39 @@
     selecao[tipo].clear();
     $$('input[data-bulk-check="' + tipo + '"]').forEach(cb => { cb.checked = false; });
     $$('.item-row[data-' + tipo + '-id]').forEach(r => r.classList.remove('item-row--selected'));
+    sincronizarSelectAll(tipo);
     updateBulkBar(tipo);
+  }
+
+  function sincronizarSelectAll(tipo) {
+    const cb = document.querySelector('input[data-select-all="' + tipo + '"]');
+    if (!cb) return;
+    const visiveis = $$('input[data-bulk-check="' + tipo + '"]');
+    if (visiveis.length === 0) {
+      cb.checked = false; cb.indeterminate = false; return;
+    }
+    const marcados = visiveis.filter(c => c.checked).length;
+    if (marcados === 0) { cb.checked = false; cb.indeterminate = false; }
+    else if (marcados === visiveis.length) { cb.checked = true; cb.indeterminate = false; }
+    else { cb.checked = false; cb.indeterminate = true; }
+  }
+
+  /* ━━━━━━━━━━━━ Busca + filtros ━━━━━━━━━━━━ */
+  function filtrarLista(tipo, items) {
+    const q = (busca[tipo] || '').trim().toLowerCase();
+    if (!q) return items;
+    const matchTxt = (txt) => String(txt || '').toLowerCase().includes(q);
+    if (tipo === 'lanc') return items.filter(l => matchTxt(l.descricao) || matchTxt(l.categoria) || matchTxt(l.tipo) || matchTxt(l.data));
+    if (tipo === 'aviso') return items.filter(a => matchTxt(a.titulo) || matchTxt(a.mensagem) || matchTxt(a.data));
+    if (tipo === 'orc') return items.filter(it => matchTxt(it.item) || matchTxt(it.categoria) || matchTxt(it.observacao) || matchTxt(it.prazo));
+    if (tipo === 'cat') return items.filter(c => matchTxt(c.cat) || matchTxt(c.tipo));
+    return items;
+  }
+
+  function updateFiltroCount(tipo, total, visiveis) {
+    const el = $('#count-' + tipo + '-filter');
+    if (!el) return;
+    el.textContent = (visiveis === total) ? '' : (visiveis + ' de ' + total);
   }
 
   function bulkDelete(tipo) {
@@ -324,11 +357,15 @@
   }
 
   function renderLancamentos() {
-    const lancs = (snapshot.lancamentos || []).slice().sort((a, b) => (b.data || '').localeCompare(a.data || ''));
-    $('#lanc-count').textContent = lancs.length + ' total';
+    const todos = (snapshot.lancamentos || []).slice().sort((a, b) => (b.data || '').localeCompare(a.data || ''));
+    const lancs = filtrarLista('lanc', todos);
+    $('#lanc-count').textContent = todos.length + ' total';
+    updateFiltroCount('lanc', todos.length, lancs.length);
     const box = $('#lanc-list');
     if (lancs.length === 0) {
-      box.innerHTML = '<p class="panel__sub" style="text-align:center;padding:20px 0;">Nenhum lançamento ainda.</p>';
+      box.innerHTML = '<p class="panel__sub" style="text-align:center;padding:20px 0;">' +
+        (todos.length === 0 ? 'Nenhum lançamento ainda.' : 'Nenhum resultado pra essa busca.') + '</p>';
+      sincronizarSelectAll('lanc');
       updateBulkBar('lanc');
       return;
     }
@@ -350,21 +387,27 @@
             '</div>' +
           '</div>' +
           '<div class="item-row__actions">' +
+            '<button class="btn btn--ghost btn--sm" data-act="dup-lanc" data-linha="' + l.linha + '" title="Duplicar como novo">duplicar</button>' +
             '<button class="btn btn--ghost btn--sm" data-act="edit-lanc" data-linha="' + l.linha + '">editar</button>' +
             '<button class="btn btn--danger btn--sm" data-act="del-lanc" data-linha="' + l.linha + '">apagar</button>' +
           '</div>' +
         '</div>'
       );
     }).join('');
+    sincronizarSelectAll('lanc');
     updateBulkBar('lanc');
   }
 
   function renderAvisos() {
-    const avs = snapshot.avisos || [];
-    $('#aviso-count').textContent = avs.length + ' total';
+    const todos = snapshot.avisos || [];
+    const avs = filtrarLista('aviso', todos);
+    $('#aviso-count').textContent = todos.length + ' total';
+    updateFiltroCount('aviso', todos.length, avs.length);
     const box = $('#aviso-list');
     if (avs.length === 0) {
-      box.innerHTML = '<p class="panel__sub" style="text-align:center;padding:20px 0;">Nenhum aviso ainda.</p>';
+      box.innerHTML = '<p class="panel__sub" style="text-align:center;padding:20px 0;">' +
+        (todos.length === 0 ? 'Nenhum aviso ainda.' : 'Nenhum resultado pra essa busca.') + '</p>';
+      sincronizarSelectAll('aviso');
       updateBulkBar('aviso');
       return;
     }
@@ -388,19 +431,24 @@
         '</div>'
       );
     }).join('');
+    sincronizarSelectAll('aviso');
     updateBulkBar('aviso');
   }
 
   function renderOrcamento() {
     const orc = snapshot.orcamento || { itens: [] };
+    const itens = filtrarLista('orc', orc.itens);
     $('#orc-count').textContent = orc.itens.length + ' itens';
+    updateFiltroCount('orc', orc.itens.length, itens.length);
     const box = $('#orc-list');
-    if (orc.itens.length === 0) {
-      box.innerHTML = '<p class="panel__sub" style="text-align:center;padding:20px 0;">Nenhum item orçado ainda.</p>';
+    if (itens.length === 0) {
+      box.innerHTML = '<p class="panel__sub" style="text-align:center;padding:20px 0;">' +
+        (orc.itens.length === 0 ? 'Nenhum item orçado ainda.' : 'Nenhum resultado pra essa busca.') + '</p>';
+      sincronizarSelectAll('orc');
       updateBulkBar('orc');
       return;
     }
-    box.innerHTML = orc.itens.map(it => {
+    box.innerHTML = itens.map(it => {
       const isSel = selecao.orc.has(String(it.linha));
       const prazoColor = it.status === 'atrasado' ? 'var(--vermelho-500)'
                        : it.status === 'apertando' ? 'var(--ambar-700)'
@@ -421,12 +469,14 @@
             '</div>' +
           '</div>' +
           '<div class="item-row__actions">' +
+            '<button class="btn btn--ghost btn--sm" data-act="dup-orc" data-linha="' + it.linha + '" title="Duplicar como novo">duplicar</button>' +
             '<button class="btn btn--ghost btn--sm" data-act="edit-orc" data-linha="' + it.linha + '">editar</button>' +
             '<button class="btn btn--danger btn--sm" data-act="del-orc" data-linha="' + it.linha + '">apagar</button>' +
           '</div>' +
         '</div>'
       );
     }).join('');
+    sincronizarSelectAll('orc');
     updateBulkBar('orc');
   }
 
@@ -435,9 +485,13 @@
     const box = $('#cat-list');
     const entradas = cats.entrada.map(c => ({ tipo: 'Entrada', cat: c }));
     const saidas   = cats.saida.map(c =>   ({ tipo: 'Saida',   cat: c }));
-    const all = entradas.concat(saidas);
+    const allTodos = entradas.concat(saidas);
+    const all = filtrarLista('cat', allTodos);
+    updateFiltroCount('cat', allTodos.length, all.length);
     if (all.length === 0) {
-      box.innerHTML = '<p class="panel__sub" style="text-align:center;padding:20px 0;">Nenhuma categoria.</p>';
+      box.innerHTML = '<p class="panel__sub" style="text-align:center;padding:20px 0;">' +
+        (allTodos.length === 0 ? 'Nenhuma categoria.' : 'Nenhum resultado pra essa busca.') + '</p>';
+      sincronizarSelectAll('cat');
       updateBulkBar('cat');
       return;
     }
@@ -459,6 +513,7 @@
         '</div>'
       );
     }).join('');
+    sincronizarSelectAll('cat');
     updateBulkBar('cat');
   }
 
@@ -699,6 +754,71 @@
       aviso: { data: a.data, titulo: t, mensagem: m, fixado: a.fixado }
     }, 'Aviso editado');
   }
+  function duplicarLancamento(linha) {
+    const l = snapshot.lancamentos.find(x => x.linha === linha); if (!l) return;
+    // Acrescenta uma linha no form com os valores
+    novaLancRow();
+    const rows = $$('#lanc-bulk-form .bulk-form__row');
+    const row = rows[rows.length - 1];
+    row.querySelector('[data-field="data"]').value = hoje();
+    row.querySelector('[data-field="tipo"]').value = l.tipo;
+    popularCategoriasNaLinha(row, 'lanc');
+    row.querySelector('[data-field="categoria"]').value = l.categoria;
+    row.querySelector('[data-field="descricao"]').value = l.descricao || '';
+    row.querySelector('[data-field="valor"]').value = l.valor;
+    atualizarBtnSalvarTxt('lanc');
+    document.getElementById('lanc-bulk-form').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    toast('Lançamento duplicado no form. Ajuste e salve.', 'sucesso');
+  }
+
+  function duplicarOrcamento(linha) {
+    const it = snapshot.orcamento.itens.find(x => x.linha === linha); if (!it) return;
+    novaOrcRow();
+    const rows = $$('#orc-bulk-form .bulk-form__row');
+    const row = rows[rows.length - 1];
+    row.querySelector('[data-field="item"]').value = it.item + ' (cópia)';
+    row.querySelector('[data-field="categoria"]').value = it.categoria;
+    row.querySelector('[data-field="planejado"]').value = it.planejado;
+    row.querySelector('[data-field="prazo"]').value = it.prazo || '';
+    row.querySelector('[data-field="observacao"]').value = it.observacao || '';
+    atualizarBtnSalvarTxt('orc');
+    document.getElementById('orc-bulk-form').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    toast('Item duplicado no form. Ajuste e salve.', 'sucesso');
+  }
+
+  function exportarLancamentosCSV() {
+    if (!snapshot || !snapshot.lancamentos || snapshot.lancamentos.length === 0) {
+      return toast('Nada pra exportar', 'erro');
+    }
+    const lancs = snapshot.lancamentos.slice().sort((a, b) => (b.data || '').localeCompare(a.data || ''));
+    const escapeCSV = (s) => {
+      const str = String(s == null ? '' : s);
+      return /[",\n;]/.test(str) ? '"' + str.replace(/"/g, '""') + '"' : str;
+    };
+    const linhas = [
+      ['Data', 'Tipo', 'Categoria', 'Descricao', 'Valor'].join(';')
+    ];
+    let totalE = 0, totalS = 0;
+    for (const l of lancs) {
+      linhas.push([l.data, l.tipo, l.categoria, escapeCSV(l.descricao), Number(l.valor).toFixed(2).replace('.', ',')].join(';'));
+      if (l.tipo === 'Entrada') totalE += l.valor; else totalS += l.valor;
+    }
+    linhas.push('');
+    linhas.push(['', '', '', 'Total Entradas', totalE.toFixed(2).replace('.', ',')].join(';'));
+    linhas.push(['', '', '', 'Total Saidas',   totalS.toFixed(2).replace('.', ',')].join(';'));
+    linhas.push(['', '', '', 'Saldo',         (totalE - totalS).toFixed(2).replace('.', ',')].join(';'));
+
+    const csv = '﻿' + linhas.join('\n'); // BOM pra Excel detectar UTF-8
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const stamp = new Date().toISOString().slice(0, 10);
+    a.href = url; a.download = 'caixa-232-lancamentos-' + stamp + '.csv';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast('CSV baixado', 'sucesso');
+  }
+
   async function editarOrcamento(linha) {
     const it = snapshot.orcamento.itens.find(x => x.linha === linha);
     if (!it) return;
@@ -776,8 +896,38 @@
       if (ok) { $('#a-titulo').value = ''; $('#a-msg').value = ''; $('#a-fixado').checked = false; }
     });
 
-    // ━━━ Delegated handlers (checkbox, bulk bar, edit, delete) ━━━
+    // Exportar CSV de lançamentos
+    $('#btn-export-lanc').addEventListener('click', exportarLancamentosCSV);
+
+    // Busca (input em qualquer toolbar)
+    document.addEventListener('input', (e) => {
+      const inp = e.target.closest('input[data-search]');
+      if (!inp) return;
+      const tipo = inp.dataset.search;
+      busca[tipo] = inp.value;
+      if (tipo === 'lanc')  renderLancamentos();
+      if (tipo === 'aviso') renderAvisos();
+      if (tipo === 'orc')   renderOrcamento();
+      if (tipo === 'cat')   renderCategoriasList();
+    });
+
+    // Select-all em qualquer toolbar
     document.addEventListener('change', (e) => {
+      const sa = e.target.closest('input[data-select-all]');
+      if (sa) {
+        const tipo = sa.dataset.selectAll;
+        const visiveis = $$('input[data-bulk-check="' + tipo + '"]');
+        visiveis.forEach(cb => {
+          cb.checked = sa.checked;
+          const id = cb.dataset.id;
+          if (sa.checked) selecao[tipo].add(id); else selecao[tipo].delete(id);
+          const row = cb.closest('.item-row');
+          if (row) row.classList.toggle('item-row--selected', sa.checked);
+        });
+        sa.indeterminate = false;
+        updateBulkBar(tipo);
+        return;
+      }
       const cb = e.target.closest('input[data-bulk-check]');
       if (!cb) return;
       const tipo = cb.dataset.bulkCheck;
@@ -786,6 +936,7 @@
       else selecao[tipo].delete(id);
       const row = cb.closest('.item-row');
       if (row) row.classList.toggle('item-row--selected', cb.checked);
+      sincronizarSelectAll(tipo);
       updateBulkBar(tipo);
     });
 
@@ -821,6 +972,8 @@
       if (act === 'edit-lanc')  return editarLancamento(linha);
       if (act === 'edit-aviso') return editarAviso(linha);
       if (act === 'edit-orc')   return editarOrcamento(linha);
+      if (act === 'dup-lanc')   return duplicarLancamento(linha);
+      if (act === 'dup-orc')    return duplicarOrcamento(linha);
 
       if (act === 'del-lanc') {
         const l = snapshot.lancamentos.find(x => x.linha === linha); if (!l) return;

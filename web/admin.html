@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="assets/style.css?v=7">
+  <link rel="stylesheet" href="assets/style.css?v=8">
 </head>
 <body>
   <header class="hero hero--admin">
@@ -112,7 +112,18 @@
             <span id="btn-orc-add-txt">Salvar item</span>
           </button>
 
-          <div id="orc-list" style="margin-top: 20px;"></div>
+          <div class="list-toolbar" id="toolbar-orc">
+            <label class="list-toolbar__select-all" title="Selecionar todos os visíveis">
+              <input type="checkbox" data-select-all="orc">
+              Todos
+            </label>
+            <div class="list-toolbar__search">
+              <svg class="list-toolbar__search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+              <input type="text" class="list-toolbar__search-input" data-search="orc" placeholder="Buscar por item, categoria, observação…">
+            </div>
+            <span class="list-toolbar__count" id="count-orc-filter"></span>
+          </div>
+          <div id="orc-list"></div>
           <div class="bulk-bar" id="bulk-bar-orc">
             <div class="bulk-bar__inner">
               <span class="bulk-bar__count" id="bulk-count-orc">0 itens selecionados</span>
@@ -169,7 +180,24 @@
             <span id="btn-lanc-add-txt">Salvar lançamento</span>
           </button>
 
-          <div id="lanc-list" style="margin-top: 20px;"></div>
+          <div class="list-toolbar" id="toolbar-lanc">
+            <label class="list-toolbar__select-all" title="Selecionar todos os visíveis">
+              <input type="checkbox" data-select-all="lanc">
+              Todos
+            </label>
+            <div class="list-toolbar__search">
+              <svg class="list-toolbar__search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+              <input type="text" class="list-toolbar__search-input" data-search="lanc" placeholder="Buscar por descrição, categoria, data…">
+            </div>
+            <span class="list-toolbar__count" id="count-lanc-filter"></span>
+            <div class="list-toolbar__actions">
+              <button type="button" class="btn btn--ghost" id="btn-export-lanc" title="Baixar CSV de todos os lançamentos">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                CSV
+              </button>
+            </div>
+          </div>
+          <div id="lanc-list"></div>
           <div class="bulk-bar" id="bulk-bar-lanc">
             <div class="bulk-bar__inner">
               <span class="bulk-bar__count" id="bulk-count-lanc">0 lançamentos selecionados</span>
@@ -210,7 +238,18 @@
           </div>
           <button class="btn btn--success btn--block" id="btn-aviso-add">+ Publicar aviso</button>
 
-          <div id="aviso-list" style="margin-top: 20px;"></div>
+          <div class="list-toolbar" id="toolbar-aviso">
+            <label class="list-toolbar__select-all" title="Selecionar todos os visíveis">
+              <input type="checkbox" data-select-all="aviso">
+              Todos
+            </label>
+            <div class="list-toolbar__search">
+              <svg class="list-toolbar__search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+              <input type="text" class="list-toolbar__search-input" data-search="aviso" placeholder="Buscar por título ou mensagem…">
+            </div>
+            <span class="list-toolbar__count" id="count-aviso-filter"></span>
+          </div>
+          <div id="aviso-list"></div>
           <div class="bulk-bar" id="bulk-bar-aviso">
             <div class="bulk-bar__inner">
               <span class="bulk-bar__count" id="bulk-count-aviso">0 avisos selecionados</span>
@@ -246,7 +285,18 @@
             <button class="btn btn--success" id="btn-cat-add">+ Adicionar</button>
           </div>
 
-          <div id="cat-list" style="margin-top: 16px;"></div>
+          <div class="list-toolbar" id="toolbar-cat">
+            <label class="list-toolbar__select-all" title="Selecionar todas as visíveis">
+              <input type="checkbox" data-select-all="cat">
+              Todas
+            </label>
+            <div class="list-toolbar__search">
+              <svg class="list-toolbar__search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+              <input type="text" class="list-toolbar__search-input" data-search="cat" placeholder="Buscar categoria…">
+            </div>
+            <span class="list-toolbar__count" id="count-cat-filter"></span>
+          </div>
+          <div id="cat-list"></div>
           <div class="bulk-bar" id="bulk-bar-cat">
             <div class="bulk-bar__inner">
               <span class="bulk-bar__count" id="bulk-count-cat">0 categorias selecionadas</span>
@@ -327,7 +377,7 @@
 
   <div class="toast" id="toast"></div>
 
-  <script src="assets/api.js?v=7"></script>
-  <script src="assets/admin.js?v=7" defer></script>
+  <script src="assets/api.js?v=8"></script>
+  <script src="assets/admin.js?v=8" defer></script>
 </body>
 </html>
