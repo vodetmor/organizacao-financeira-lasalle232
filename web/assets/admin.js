@@ -215,34 +215,24 @@
       meta: '',
       okTxt: 'Apagar ' + ids.length,
       onConfirm: async () => {
-        let r;
-        if (tipo === 'cat') {
-          const catItens = ids.map(id => {
-            const [t, n] = id.split('|');
-            return { tipo: t, categoria: n };
-          });
-          r = await API.post('delCats', { token, itens: catItens });
-        } else {
-          const actionMap = { lanc: 'delLancs', aviso: 'delAvisos', orc: 'delOrcs' };
-          const linhas = ids.map(id => parseInt(id, 10));
-          r = await API.post(actionMap[tipo], { token, linhas });
-        }
-
-        if (!r.ok) { toast(r.erro || 'Erro', 'erro'); return; }
-
-        // UPDATE OTIMISTA: remove do snapshot local + re-render
+        // OPTIMISTIC ANTES DA RESPONSE: remove local + re-render
         const linhasSet = new Set(ids);
+        const backup = {};
         if (tipo === 'lanc') {
+          backup.list = snapshot.lancamentos.slice();
           snapshot.lancamentos = snapshot.lancamentos.filter(l => !linhasSet.has(String(l.linha)));
           recalcularResumoLocal();
           renderLancamentos();
         } else if (tipo === 'aviso') {
+          backup.list = snapshot.avisos.slice();
           snapshot.avisos = snapshot.avisos.filter(a => !linhasSet.has(String(a.linha)));
           renderAvisos();
         } else if (tipo === 'orc') {
+          backup.list = snapshot.orcamento.itens.slice();
           snapshot.orcamento.itens = snapshot.orcamento.itens.filter(it => !linhasSet.has(String(it.linha)));
           renderOrcamento();
         } else if (tipo === 'cat') {
+          backup.cats = { entrada: snapshot.categorias.entrada.slice(), saida: snapshot.categorias.saida.slice() };
           for (const id of ids) {
             const [t, n] = id.split('|');
             const lista = t === 'Entrada' ? 'entrada' : 'saida';
@@ -250,12 +240,34 @@
           }
           renderCategoriasList();
         }
-
         selecao[tipo].clear();
         const palavraSing = L.sing, palavraPlur = L.plur;
         const sufixoGen = L.gen === 'f' ? 'a' : 'o';
         toast(ids.length + ' ' + (ids.length === 1 ? palavraSing : palavraPlur) + ' apagad' + sufixoGen + (ids.length === 1 ? '' : 's'), 'sucesso');
 
+        // POST batch em background — se falhar, reverte
+        let r;
+        try {
+          if (tipo === 'cat') {
+            const catItens = ids.map(id => { const [t, n] = id.split('|'); return { tipo: t, categoria: n }; });
+            r = await API.post('delCats', { token, itens: catItens });
+          } else {
+            const actionMap = { lanc: 'delLancs', aviso: 'delAvisos', orc: 'delOrcs' };
+            r = await API.post(actionMap[tipo], { token, linhas: ids.map(id => parseInt(id, 10)) });
+          }
+        } catch (err) {
+          r = { ok: false, erro: err.message };
+        }
+
+        if (!r.ok) {
+          // reverter
+          if (tipo === 'lanc')  { snapshot.lancamentos = backup.list; recalcularResumoLocal(); renderLancamentos(); }
+          if (tipo === 'aviso') { snapshot.avisos = backup.list; renderAvisos(); }
+          if (tipo === 'orc')   { snapshot.orcamento.itens = backup.list; renderOrcamento(); }
+          if (tipo === 'cat')   { snapshot.categorias = backup.cats; renderCategoriasList(); }
+          toast('Falha ao apagar — desfeito. ' + (r.erro || ''), 'erro');
+          return;
+        }
         refreshSilent();
       }
     });
@@ -528,28 +540,45 @@
     }
     const btn = $('#btn-lanc-add');
     btn.disabled = true;
-    $('#btn-lanc-add-txt').textContent = 'salvando ' + lancs.length + '…';
-    try {
-      // BATCH: 1 request com N lançamentos
-      const r = await API.post('addLancs', { token, lancs });
-      if (!r.ok) { toast(r.erro || 'Erro', 'erro'); return; }
+    $('#btn-lanc-add-txt').textContent = 'salvando…';
 
-      // UPDATE OTIMISTA: adiciona no snapshot local, re-render imediato
-      const startRow = r.startRow || (snapshot.lancamentos.length + 2);
-      lancs.forEach((l, i) => {
-        snapshot.lancamentos.push({
-          linha: startRow + i, data: l.data, tipo: l.tipo, categoria: l.categoria,
-          descricao: l.descricao || '', valor: Number(l.valor)
-        });
+    // OPTIMISTIC ANTES DA RESPONSE: aparece imediato com linha temporária
+    const tempIds = [];
+    lancs.forEach((l, i) => {
+      const tid = 'tmp_' + Date.now() + '_' + i;
+      tempIds.push(tid);
+      snapshot.lancamentos.push({
+        linha: tid, data: l.data, tipo: l.tipo, categoria: l.categoria,
+        descricao: l.descricao || '', valor: Number(l.valor)
       });
+    });
+    recalcularResumoLocal();
+    renderLancamentos();
+    resetForm('lanc');
+    toast(lancs.length + (lancs.length > 1 ? ' lançamentos adicionados' : ' lançamento adicionado'), 'sucesso');
+
+    // POST em background — se falhar, reverte
+    try {
+      const r = await API.post('addLancs', { token, lancs });
+      if (!r.ok) {
+        snapshot.lancamentos = snapshot.lancamentos.filter(l => tempIds.indexOf(l.linha) === -1);
+        recalcularResumoLocal();
+        renderLancamentos();
+        toast('Falha ao salvar — desfeito. ' + (r.erro || ''), 'erro');
+        return;
+      }
+      // troca placeholder por linha real
+      const startRow = r.startRow;
+      let idx = 0;
+      snapshot.lancamentos.forEach(l => {
+        if (tempIds.indexOf(l.linha) !== -1) { l.linha = startRow + idx; idx++; }
+      });
+      refreshSilent();
+    } catch (err) {
+      snapshot.lancamentos = snapshot.lancamentos.filter(l => tempIds.indexOf(l.linha) === -1);
       recalcularResumoLocal();
       renderLancamentos();
-
-      resetForm('lanc');
-      toast(lancs.length + ' lançamento' + (lancs.length > 1 ? 's adicionados' : ' adicionado'), 'sucesso');
-
-      // Refresh full em background pra ajustar evolução + orçamento status
-      refreshSilent();
+      toast('Falha de rede — desfeito', 'erro');
     } finally {
       btn.disabled = false;
       atualizarBtnSalvarTxt('lanc');
@@ -575,27 +604,42 @@
     }
     const btn = $('#btn-orc-add');
     btn.disabled = true;
-    $('#btn-orc-add-txt').textContent = 'salvando ' + itens.length + '…';
+    $('#btn-orc-add-txt').textContent = 'salvando…';
+
+    // OPTIMISTIC ANTES DA RESPONSE
+    const tempIds = [];
+    itens.forEach((it, i) => {
+      const tid = 'tmp_' + Date.now() + '_' + i;
+      tempIds.push(tid);
+      snapshot.orcamento.itens.push({
+        linha: tid, item: it.item, categoria: it.categoria,
+        planejado: Number(it.planejado), pago: 0, restante: Number(it.planejado),
+        progresso: 0, prazo: it.prazo || '', observacao: it.observacao || '',
+        status: it.prazo ? 'no-prazo' : 'sem-prazo', diasRestantes: null
+      });
+    });
+    renderOrcamento();
+    resetForm('orc');
+    toast(itens.length + (itens.length > 1 ? ' itens adicionados' : ' item adicionado') + ' ao orçamento', 'sucesso');
+
     try {
       const r = await API.post('addOrcs', { token, itens });
-      if (!r.ok) { toast(r.erro || 'Erro', 'erro'); return; }
-
-      // Otimista
-      const startRow = r.startRow || (snapshot.orcamento.itens.length + 2);
-      itens.forEach((it, i) => {
-        snapshot.orcamento.itens.push({
-          linha: startRow + i, item: it.item, categoria: it.categoria,
-          planejado: Number(it.planejado), pago: 0, restante: Number(it.planejado),
-          progresso: 0, prazo: it.prazo || '', observacao: it.observacao || '',
-          status: it.prazo ? 'no-prazo' : 'sem-prazo', diasRestantes: null
-        });
+      if (!r.ok) {
+        snapshot.orcamento.itens = snapshot.orcamento.itens.filter(it => tempIds.indexOf(it.linha) === -1);
+        renderOrcamento();
+        toast('Falha ao salvar — desfeito. ' + (r.erro || ''), 'erro');
+        return;
+      }
+      const startRow = r.startRow;
+      let idx = 0;
+      snapshot.orcamento.itens.forEach(it => {
+        if (tempIds.indexOf(it.linha) !== -1) { it.linha = startRow + idx; idx++; }
       });
-      renderOrcamento();
-
-      resetForm('orc');
-      toast(itens.length + (itens.length > 1 ? ' itens adicionados' : ' item adicionado') + ' ao orçamento', 'sucesso');
-
       refreshSilent();
+    } catch (err) {
+      snapshot.orcamento.itens = snapshot.orcamento.itens.filter(it => tempIds.indexOf(it.linha) === -1);
+      renderOrcamento();
+      toast('Falha de rede — desfeito', 'erro');
     } finally {
       btn.disabled = false;
       atualizarBtnSalvarTxt('orc');
