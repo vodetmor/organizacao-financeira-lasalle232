@@ -61,6 +61,92 @@ function adminGetSnapshot(token) {
  *  CRUD Lançamentos
  * =========================================================== */
 
+/* ===========================================================
+ *  CRUD em lote (1 request, N operações)
+ * =========================================================== */
+
+function adminAdicionarLancamentos(token, lancs) {
+  try {
+    _auth(token);
+    if (!Array.isArray(lancs) || lancs.length === 0) return { ok: false, erro: 'Lista vazia.' };
+    for (let i = 0; i < lancs.length; i++) {
+      const err = _validarLanc(lancs[i]);
+      if (err) return { ok: false, erro: 'Linha ' + (i + 1) + ': ' + err };
+    }
+    const aba = _aba(ABAS.LANCAMENTOS);
+    const rows = lancs.map(l => [l.data, l.tipo, l.categoria, l.descricao || '', Number(l.valor)]);
+    const startRow = aba.getLastRow() + 1;
+    aba.getRange(startRow, 1, rows.length, 5).setValues(rows);
+    return { ok: true, count: rows.length, startRow: startRow };
+  } catch (e) { return { ok: false, erro: e.message }; }
+}
+
+function adminAdicionarOrcamentos(token, itens) {
+  try {
+    _auth(token);
+    if (!Array.isArray(itens) || itens.length === 0) return { ok: false, erro: 'Lista vazia.' };
+    for (let i = 0; i < itens.length; i++) {
+      const err = _validarOrc(itens[i]);
+      if (err) return { ok: false, erro: 'Linha ' + (i + 1) + ': ' + err };
+    }
+    const aba = _aba(ABAS.ORCAMENTO);
+    const rows = itens.map(it => [
+      it.item, it.categoria, Number(it.planejado), it.prazo || '', it.observacao || ''
+    ]);
+    const startRow = aba.getLastRow() + 1;
+    aba.getRange(startRow, 1, rows.length, 5).setValues(rows);
+    return { ok: true, count: rows.length, startRow: startRow };
+  } catch (e) { return { ok: false, erro: e.message }; }
+}
+
+/**
+ * Apaga linhas em batch. Linhas vêm em ordem aleatória — ordena
+ * decrescente pra não bagunçar índices ao deletar.
+ */
+function adminDeletarLinhasBatch(token, nomeAba, linhas) {
+  try {
+    _auth(token);
+    if (!Array.isArray(linhas) || linhas.length === 0) return { ok: false, erro: 'Lista vazia.' };
+    const aba = _aba(nomeAba);
+    const ordenadas = linhas.map(n => parseInt(n, 10))
+      .filter(n => n >= 2 && n <= aba.getLastRow())
+      .sort((a, b) => b - a);
+    for (let i = 0; i < ordenadas.length; i++) aba.deleteRow(ordenadas[i]);
+    return { ok: true, count: ordenadas.length };
+  } catch (e) { return { ok: false, erro: e.message }; }
+}
+
+function adminDeletarLancamentos(token, linhas) { return adminDeletarLinhasBatch(token, ABAS.LANCAMENTOS, linhas); }
+function adminDeletarAvisosBatch(token, linhas) { return adminDeletarLinhasBatch(token, ABAS.AVISOS, linhas); }
+function adminDeletarOrcamentos(token, linhas)  { return adminDeletarLinhasBatch(token, ABAS.ORCAMENTO, linhas); }
+
+function adminDeletarCategoriasBatch(token, itens) {
+  try {
+    _auth(token);
+    if (!Array.isArray(itens) || itens.length === 0) return { ok: false, erro: 'Lista vazia.' };
+    const aba = _aba(ABAS.CATEGORIAS);
+    const dados = aba.getDataRange().getValues();
+    // mapa tipo|nome → linha
+    const mapa = {};
+    for (let i = 1; i < dados.length; i++) {
+      const t = _normTipo(dados[i][0]);
+      const n = String(dados[i][1] || '').trim();
+      if (t && n) mapa[t + '|' + n] = i + 1;
+    }
+    const linhas = [];
+    for (let i = 0; i < itens.length; i++) {
+      const it = itens[i];
+      const t = _normTipo(it.tipo);
+      const n = String(it.categoria || '').trim();
+      const key = t + '|' + n;
+      if (mapa[key]) linhas.push(mapa[key]);
+    }
+    const ordenadas = linhas.sort((a, b) => b - a);
+    for (let i = 0; i < ordenadas.length; i++) aba.deleteRow(ordenadas[i]);
+    return { ok: true, count: ordenadas.length };
+  } catch (e) { return { ok: false, erro: e.message }; }
+}
+
 function adminAdicionarLancamento(token, lanc) {
   try {
     _auth(token);

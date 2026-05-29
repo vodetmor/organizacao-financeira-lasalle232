@@ -58,6 +58,14 @@ function doPost(e) {
       case 'editOrc':      r = adminEditarOrcamento(token, body.linha, body.item); break;
       case 'delOrc':       r = adminDeletarOrcamento(token, body.linha); break;
 
+      // Batch — uma request, N operações
+      case 'addLancs':     r = adminAdicionarLancamentos(token, body.lancs); break;
+      case 'addOrcs':      r = adminAdicionarOrcamentos(token, body.itens); break;
+      case 'delLancs':     r = adminDeletarLancamentos(token, body.linhas); break;
+      case 'delAvisos':    r = adminDeletarAvisosBatch(token, body.linhas); break;
+      case 'delOrcs':      r = adminDeletarOrcamentos(token, body.linhas); break;
+      case 'delCats':      r = adminDeletarCategoriasBatch(token, body.itens); break;
+
       case 'trocarSenha':  r = adminTrocarSenha(token, body.senhaAtual, body.senhaNova); break;
 
       default: r = { ok: false, erro: 'Ação inválida: ' + action };

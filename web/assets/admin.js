@@ -150,6 +150,34 @@
     }
   }
 
+  // Refresh silencioso: pega snapshot novo em background, sem mostrar erro nem reset.
+  // Usado depois de mutações pra ajustar métricas que dependem do server (orçamento status etc).
+  function refreshSilent() {
+    API.post('snapshot', { token }).then(r => {
+      if (r && r.ok) { snapshot = r.data; renderTudo(); }
+    }).catch(() => {});
+  }
+
+  // Recalcula resumo localmente sem precisar do server (otimista)
+  function recalcularResumoLocal() {
+    if (!snapshot) return;
+    let arrec = 0, gasto = 0;
+    for (const l of snapshot.lancamentos) {
+      if (l.tipo === 'Entrada') arrec += Number(l.valor) || 0;
+      else if (l.tipo === 'Saida') gasto += Number(l.valor) || 0;
+    }
+    const saldo = arrec - gasto;
+    const m = Number(snapshot.meta) || 0;
+    snapshot.resumo = {
+      arrecadado: Math.round(arrec * 100) / 100,
+      gasto: Math.round(gasto * 100) / 100,
+      saldo: Math.round(saldo * 100) / 100,
+      falta: Math.round(Math.max(0, m - saldo) * 100) / 100,
+      percentual: m > 0 ? Math.round((saldo / m) * 10000) / 100 : 0,
+      meta: m
+    };
+  }
+
   /* ━━━━━━━━━━━━ Bulk selection helpers ━━━━━━━━━━━━ */
   function updateBulkBar(tipo) {
     const bar = $('#bulk-bar-' + tipo);
@@ -187,34 +215,48 @@
       meta: '',
       okTxt: 'Apagar ' + ids.length,
       onConfirm: async () => {
-        const actionMap = { lanc: 'delLanc', aviso: 'delAviso', orc: 'delOrc' };
-        let okCount = 0, errCount = 0, lastErr = '';
-
+        let r;
         if (tipo === 'cat') {
-          // Cat usa tipo|nome
+          const catItens = ids.map(id => {
+            const [t, n] = id.split('|');
+            return { tipo: t, categoria: n };
+          });
+          r = await API.post('delCats', { token, itens: catItens });
+        } else {
+          const actionMap = { lanc: 'delLancs', aviso: 'delAvisos', orc: 'delOrcs' };
+          const linhas = ids.map(id => parseInt(id, 10));
+          r = await API.post(actionMap[tipo], { token, linhas });
+        }
+
+        if (!r.ok) { toast(r.erro || 'Erro', 'erro'); return; }
+
+        // UPDATE OTIMISTA: remove do snapshot local + re-render
+        const linhasSet = new Set(ids);
+        if (tipo === 'lanc') {
+          snapshot.lancamentos = snapshot.lancamentos.filter(l => !linhasSet.has(String(l.linha)));
+          recalcularResumoLocal();
+          renderLancamentos();
+        } else if (tipo === 'aviso') {
+          snapshot.avisos = snapshot.avisos.filter(a => !linhasSet.has(String(a.linha)));
+          renderAvisos();
+        } else if (tipo === 'orc') {
+          snapshot.orcamento.itens = snapshot.orcamento.itens.filter(it => !linhasSet.has(String(it.linha)));
+          renderOrcamento();
+        } else if (tipo === 'cat') {
           for (const id of ids) {
             const [t, n] = id.split('|');
-            try {
-              const r = await API.post('delCat', { token, tipo: t, categoria: n });
-              if (r.ok) okCount++; else { errCount++; lastErr = r.erro || ''; }
-            } catch (e) { errCount++; lastErr = e.message; }
+            const lista = t === 'Entrada' ? 'entrada' : 'saida';
+            snapshot.categorias[lista] = snapshot.categorias[lista].filter(c => c !== n);
           }
-        } else {
-          for (const id of ids) {
-            try {
-              const r = await API.post(actionMap[tipo], { token, linha: parseInt(id, 10) });
-              if (r.ok) okCount++; else { errCount++; lastErr = r.erro || ''; }
-            } catch (e) { errCount++; lastErr = e.message; }
-          }
+          renderCategoriasList();
         }
 
         selecao[tipo].clear();
-        if (errCount === 0) {
-          toast(okCount + ' ' + (okCount === 1 ? L.sing : L.plur) + ' apagado(s)', 'sucesso');
-        } else {
-          toast(okCount + ' de ' + ids.length + ' apagados. Erro: ' + lastErr, 'erro');
-        }
-        await carregarSnapshot();
+        const palavraSing = L.sing, palavraPlur = L.plur;
+        const sufixoGen = L.gen === 'f' ? 'a' : 'o';
+        toast(ids.length + ' ' + (ids.length === 1 ? palavraSing : palavraPlur) + ' apagad' + sufixoGen + (ids.length === 1 ? '' : 's'), 'sucesso');
+
+        refreshSilent();
       }
     });
   }
@@ -488,16 +530,26 @@
     btn.disabled = true;
     $('#btn-lanc-add-txt').textContent = 'salvando ' + lancs.length + '…';
     try {
-      const results = await Promise.all(lancs.map(l => API.post('addLanc', { token, lanc: l })));
-      const ok = results.filter(r => r.ok).length;
-      if (ok === lancs.length) {
-        toast(ok + ' lançamento' + (ok > 1 ? 's' : '') + ' adicionado' + (ok > 1 ? 's' : ''), 'sucesso');
-        resetForm('lanc');
-      } else {
-        const err = results.find(r => !r.ok);
-        toast(ok + ' de ' + lancs.length + ' salvos. ' + (err && err.erro || ''), 'erro');
-      }
-      await carregarSnapshot();
+      // BATCH: 1 request com N lançamentos
+      const r = await API.post('addLancs', { token, lancs });
+      if (!r.ok) { toast(r.erro || 'Erro', 'erro'); return; }
+
+      // UPDATE OTIMISTA: adiciona no snapshot local, re-render imediato
+      const startRow = r.startRow || (snapshot.lancamentos.length + 2);
+      lancs.forEach((l, i) => {
+        snapshot.lancamentos.push({
+          linha: startRow + i, data: l.data, tipo: l.tipo, categoria: l.categoria,
+          descricao: l.descricao || '', valor: Number(l.valor)
+        });
+      });
+      recalcularResumoLocal();
+      renderLancamentos();
+
+      resetForm('lanc');
+      toast(lancs.length + ' lançamento' + (lancs.length > 1 ? 's adicionados' : ' adicionado'), 'sucesso');
+
+      // Refresh full em background pra ajustar evolução + orçamento status
+      refreshSilent();
     } finally {
       btn.disabled = false;
       atualizarBtnSalvarTxt('lanc');
@@ -525,16 +577,25 @@
     btn.disabled = true;
     $('#btn-orc-add-txt').textContent = 'salvando ' + itens.length + '…';
     try {
-      const results = await Promise.all(itens.map(item => API.post('addOrc', { token, item })));
-      const ok = results.filter(r => r.ok).length;
-      if (ok === itens.length) {
-        toast(ok + (ok > 1 ? ' itens adicionados' : ' item adicionado') + ' ao orçamento', 'sucesso');
-        resetForm('orc');
-      } else {
-        const err = results.find(r => !r.ok);
-        toast(ok + ' de ' + itens.length + ' salvos. ' + (err && err.erro || ''), 'erro');
-      }
-      await carregarSnapshot();
+      const r = await API.post('addOrcs', { token, itens });
+      if (!r.ok) { toast(r.erro || 'Erro', 'erro'); return; }
+
+      // Otimista
+      const startRow = r.startRow || (snapshot.orcamento.itens.length + 2);
+      itens.forEach((it, i) => {
+        snapshot.orcamento.itens.push({
+          linha: startRow + i, item: it.item, categoria: it.categoria,
+          planejado: Number(it.planejado), pago: 0, restante: Number(it.planejado),
+          progresso: 0, prazo: it.prazo || '', observacao: it.observacao || '',
+          status: it.prazo ? 'no-prazo' : 'sem-prazo', diasRestantes: null
+        });
+      });
+      renderOrcamento();
+
+      resetForm('orc');
+      toast(itens.length + (itens.length > 1 ? ' itens adicionados' : ' item adicionado') + ' ao orçamento', 'sucesso');
+
+      refreshSilent();
     } finally {
       btn.disabled = false;
       atualizarBtnSalvarTxt('orc');
@@ -549,6 +610,26 @@
       toast(r.erro || 'Erro', 'erro'); return false;
     } catch (err) {
       toast('Erro: ' + err.message, 'erro'); return false;
+    }
+  }
+
+  // Otimista: aplica mutação local primeiro, re-render, depois chama API + refresh bg
+  async function callOptimistic(action, body, msgOk, localMutator) {
+    if (localMutator) { localMutator(); recalcularResumoLocal(); renderTudo(); }
+    try {
+      const r = await API.post(action, Object.assign({ token }, body));
+      if (r.ok) {
+        toast(msgOk, 'sucesso');
+        refreshSilent();
+        return true;
+      }
+      toast(r.erro || 'Erro', 'erro');
+      await carregarSnapshot(); // reverte
+      return false;
+    } catch (err) {
+      toast('Erro: ' + err.message, 'erro');
+      await carregarSnapshot();
+      return false;
     }
   }
 
@@ -705,7 +786,8 @@
           mensagem: 'O lançamento sai da planilha e do dashboard. Ação não pode ser desfeita pela UI.',
           nome: l.descricao || '(sem descrição)',
           meta: l.data + ' · ' + l.tipo + ' · ' + l.categoria + ' · ' + sinal + ' ' + fmtBRL(l.valor),
-          onConfirm: () => callAndReload('delLanc', { linha }, 'Lançamento apagado')
+          onConfirm: () => callOptimistic('delLanc', { linha }, 'Lançamento apagado',
+            () => { snapshot.lancamentos = snapshot.lancamentos.filter(x => x.linha !== linha); })
         });
       } else if (act === 'del-aviso') {
         const a = snapshot.avisos.find(x => x.linha === linha); if (!a) return;
@@ -714,7 +796,8 @@
           mensagem: 'Esse recado some do topo do dashboard. Os alunos não vão ver mais.',
           nome: a.titulo,
           meta: a.data + (a.fixado ? ' · 📌 fixado' : ''),
-          onConfirm: () => callAndReload('delAviso', { linha }, 'Aviso apagado')
+          onConfirm: () => callOptimistic('delAviso', { linha }, 'Aviso apagado',
+            () => { snapshot.avisos = snapshot.avisos.filter(x => x.linha !== linha); })
         });
       } else if (act === 'del-orc') {
         const it = snapshot.orcamento.itens.find(x => x.linha === linha); if (!it) return;
@@ -723,7 +806,8 @@
           mensagem: 'O item some da lista "Pra onde vai o dinheiro". Lançamentos antigos da categoria continuam.',
           nome: it.item,
           meta: it.categoria + ' · planejado ' + fmtBRL(it.planejado) + ' · pago ' + fmtBRL(it.pago) + (it.prazo ? ' · prazo ' + it.prazo : ''),
-          onConfirm: () => callAndReload('delOrc', { linha }, 'Item apagado')
+          onConfirm: () => callOptimistic('delOrc', { linha }, 'Item apagado',
+            () => { snapshot.orcamento.itens = snapshot.orcamento.itens.filter(x => x.linha !== linha); })
         });
       } else if (act === 'del-cat') {
         const tipo = btn.dataset.tipo;
@@ -733,7 +817,11 @@
           mensagem: 'A categoria some das listas suspensas. Lançamentos antigos que usam ela continuam intactos.',
           nome: nome,
           meta: tipo,
-          onConfirm: () => callAndReload('delCat', { tipo, categoria: nome }, 'Categoria apagada')
+          onConfirm: () => callOptimistic('delCat', { tipo, categoria: nome }, 'Categoria apagada',
+            () => {
+              const lista = tipo === 'Entrada' ? 'entrada' : 'saida';
+              snapshot.categorias[lista] = snapshot.categorias[lista].filter(c => c !== nome);
+            })
         });
       }
     });
